@@ -1,0 +1,42 @@
+schema_version = "1.0.0"
+
+id = "maya_gizmo"
+version = "1.0.0"
+name = "Maya Gizmo"
+tagline = "Transform along the last used gizmo axis with an MMB drag"
+maintainer = "Angelo Tsiflas (cubosaur)"
+type = "add-on"
+
+website = "https://github.com/cubosaur/maya-gizmo-for-blender"
+
+tags = ["3D View", "User Interface"]
+
+blender_version_min = "4.2.0"
+
+license = [
+  "SPDX:GPL-3.0-or-later",
+]
+copyright = [
+  "2026 Angelo Tsiflas",
+]
+
+[permissions]
+# None. This addon does not read or write files, and does not use the network.
+
+[build]
+# LICENSE is kept in the archive on purpose; README.md is not, because its
+# images live under docs/ and would be broken links once packaged.
+paths_exclude_pattern = [
+  "__pycache__/",
+  "/.git/",
+  "/.github/",
+  "/.gitignore",
+  "/docs/",
+  "/tools/",
+  "/tests/",
+  "/dist/",
+  "/CHANGELOG.md",
+  "/CONTRIBUTING.md",
+  "/README.md",
+  "*.zip",
+]

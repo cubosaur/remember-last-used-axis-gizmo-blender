@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Byte-compile all sources
+        run: python -m compileall -q .
+
+      - name: Build the extension archive
+        run: python tools/build.py --output-dir dist
+
+      - name: Check the archive layout
+        run: |
+          python - <<'PY'
+          import pathlib, zipfile
+          archive = next(pathlib.Path("dist").glob("*.zip"))
+          names = set(zipfile.ZipFile(archive).namelist())
+          # Blender requires the manifest at the root of the archive.
+          assert "blender_manifest.toml" in names, names
+          assert "__init__.py" in names, names
+          for unwanted in ("README.md", "CHANGELOG.md"):
+              assert unwanted not in names, f"{unwanted} should be excluded"
+          assert not any(n.startswith(("tools/", "docs/", ".github/")) for n in names), names
+          print(f"{archive.name} ok: {len(names)} entries")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: dist/*.zip

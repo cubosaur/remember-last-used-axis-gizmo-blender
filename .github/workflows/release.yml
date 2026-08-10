@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build the extension archive
+        # Fails if the tag and the manifest version disagree, so a release can
+        # never ship a zip whose version does not match its tag.
+        run: |
+          python tools/build.py \
+            --output-dir dist \
+            --expect-version "${GITHUB_REF_NAME}"
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
+          body: |
+            ## Install
+
+            Download the `.zip` below and drag it into a Blender window
+            (Blender 4.2 or newer), or use
+            **Edit ▸ Preferences ▸ Add-ons ▸ Install from Disk…**
+
+            Disabling the addon reverts every keymap change it made. There is
+            also a **Reset Hotkeys** button in its preferences.
