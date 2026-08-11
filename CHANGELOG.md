@@ -3,6 +3,28 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-08-11
+
+### Fixed
+
+- Move arrow heads and scale handle boxes are chunkier, closer to Blender's
+  own. ``aspect`` turns out to be a no-op on both the arrow and box styles, so
+  the head is sized through ``scale_basis`` with ``length`` pulled back to keep
+  the arrow tip where it was.
+- The centre handle was oversized after the previous round's calibration and is
+  back in proportion with the native one.
+
+### Verified
+
+- **Edit Mode**: the gizmo appears with the Move/Rotate/Scale tool, the pivot
+  follows the selected geometry, and the axis highlight, handle drags and the
+  middle mouse drag all transform the selection. With the Tweak tool no gizmo
+  is shown, matching Blender.
+- **Snapping**: scene snapping applies to both handle drags and the middle
+  mouse drag. The transform operators are invoked without overriding `snap`,
+  so they pick up the scene's snapping settings exactly as the native gizmo
+  does.
+
 ## [1.2.1] - 2026-08-11
 
 ### Fixed
@@ -97,6 +119,8 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.2.2]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.2
+[1.2.1]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.1
 [1.2.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.0
 [1.1.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.1.0
 [1.0.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.0.0

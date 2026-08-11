@@ -172,6 +172,9 @@ the handle rather than like a scripted nudge.
   approximates.
 - The gizmo pivot is computed properly for Object Mode, Edit Mode (mesh) and
   Pose Mode. Other edit modes fall back to the object origin.
+
+Edit Mode and snapping both work: the gizmo follows the selected geometry, and
+scene snapping applies to handle drags and to the middle mouse drag alike.
 - On the **right-click-select** keymap the RMB-drag orbit is skipped
   automatically, since right mouse already selects there. Everything else works.
 - In **sculpt and paint modes** right mouse is bound to brush stencil controls,

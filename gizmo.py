@@ -36,9 +36,9 @@ _suppressed_for = None
 #: Handle sizes, in gizmo units. Measured against the native gizmo on screen:
 #: each primitive type has its own scale convention, so these are calibrated
 #: rather than derived.
-AXIS_SCALE = 0.44
+AXIS_SCALE = 0.58
 PLANE_SCALE = 0.028
-CENTRE_SCALE = 0.14
+CENTRE_SCALE = 0.09
 DIAL_SCALE = 0.44
 VIEW_DIAL_SCALE = 0.60
 
@@ -60,6 +60,14 @@ VIEW_RING_LINE_WIDTH = 0.9
 
 ALPHA = 0.7
 ALPHA_HIGHLIGHT = 1.0
+
+#: Head proportions. ``aspect`` turns out to be a no-op for both the arrow and
+#: box styles, so the head is sized through ``scale_basis`` (which scales the
+#: head) while ``length`` pulls the shaft back to keep the tip in place.
+MOVE_ARROW_STYLE = 'NORMAL'
+#: Shaft length, pulled back so the bigger head does not push the tip out.
+#: AXIS_SCALE * ARROW_LENGTH is what sets where the arrow ends.
+ARROW_LENGTH = 0.76
 
 AXIS_NAMES = ('X', 'Y', 'Z')
 
@@ -483,6 +491,12 @@ class MGB_GGT_transform(GizmoGroup):
                 gz.matrix_basis = translation @ _aim(axes[index])
                 gz.scale_basis = AXIS_SCALE
                 gz.line_width = AXIS_LINE_WIDTH * ui_scale
+                try:
+                    gz.length = ARROW_LENGTH
+                    if kind == state.TRANSLATE:
+                        gz.draw_style = MOVE_ARROW_STYLE
+                except Exception:
+                    pass
                 base = colors[index]
             elif role == 'plane':
                 u, v, normal = PLANES[index]
