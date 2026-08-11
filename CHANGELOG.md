@@ -3,6 +3,18 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-08-11
+
+### Fixed
+
+- Pressing a transform tool's shortcut while that tool was already active
+  brought Blender's own transform gizmo back on top of this one, showing two
+  overlapping gizmos at different sizes. Activating a tool re-links its gizmo
+  group even when it is already active, and the suppression was keyed on
+  (mode, tool), which cannot see a repeat of the same tool. It is now also
+  driven by a message-bus subscription on tool activation, which fires on every
+  activation including repeats.
+
 ## [1.2.2] - 2026-08-11
 
 ### Fixed
@@ -119,6 +131,7 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.2.3]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.3
 [1.2.2]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.2
 [1.2.1]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.1
 [1.2.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.0

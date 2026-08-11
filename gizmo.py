@@ -567,6 +567,45 @@ def _restore_native():
         traceback.print_exc()
 
 
+#: Owner token for the tool-activation subscription.
+_msgbus_owner = object()
+
+
+def _on_tool_activated(*_args):
+    """Re-suppress the native gizmo whenever a tool is activated.
+
+    Activating a tool re-links its gizmo group even when it is *already* the
+    active tool, so pressing the same tool shortcut twice would otherwise bring
+    Blender's transform gizmo back alongside ours -- two gizmos at once. Keying
+    the suppression on (mode, tool) alone cannot see that, because neither
+    changed.
+    """
+    global _suppressed_for
+    _suppressed_for = None
+    _suppress_native()
+
+
+def _subscribe_tool_changes():
+    try:
+        bpy.msgbus.subscribe_rna(
+            key=(bpy.types.WorkSpace, "tools"),
+            owner=_msgbus_owner,
+            args=(),
+            notify=_on_tool_activated,
+            options={'PERSISTENT'},
+        )
+    except Exception:
+        import traceback
+        traceback.print_exc()
+
+
+def _unsubscribe_tool_changes():
+    try:
+        bpy.msgbus.clear_by_owner(_msgbus_owner)
+    except Exception:
+        pass
+
+
 def set_enabled(enabled):
     """Swap between our gizmo and Blender's stock one.
 
@@ -589,6 +628,7 @@ def _on_load(_dummy):
     # Loading a file rebuilds the tools, which re-links the native group.
     global _suppressed_for
     _suppressed_for = None
+    _subscribe_tool_changes()
 
 
 def register():
@@ -598,12 +638,14 @@ def register():
         return
     _suppressed_for = None
     _suppress_native()
+    _subscribe_tool_changes()
     if _on_load not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(_on_load)
 
 
 def unregister():
     global _suppressed_for
+    _unsubscribe_tool_changes()
     if _on_load in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(_on_load)
     # Give the stock transform gizmo back first, so a later failure cannot
