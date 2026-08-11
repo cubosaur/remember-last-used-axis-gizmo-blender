@@ -1,39 +1,60 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""The last-used-axis gizmo.
+"""A transform gizmo whose last used handle is drawn in yellow.
 
-A single yellow puck parked just beyond the tip of Blender's transform gizmo,
-pointing along the axis that will be reused. Clicking or dragging it runs the
-same transform that a middle mouse drag does.
+Blender's own transform gizmo is C code, and Python cannot recolour one of its
+handles. Recolouring through the theme does not work either: the transform
+gizmo takes its axis colours from ``theme.user_interface.axis_x/y/z``, which
+also drive the viewport floor grid lines and the navigation gizmo, so turning
+"X" yellow turns the entire X grid line yellow as well.
 
-This is a real ``GizmoGroup`` rather than a GPU overlay, which is what makes it
-clickable, gives it a hover highlight, and lets it hide itself while a transform
-is in flight the way Blender's own gizmos do.
+So this module rebuilds the move / rotate / scale gizmos out of Blender's own
+built-in gizmo *types* -- the same arrow, dial, plane and ring primitives the
+native one is made of -- and suppresses the native group with
+``gizmo_group_type_unlink_delayed``. Every handle keeps its usual axis colour
+except the last used one, which is yellow. Dragging a handle runs the same
+transform operator the native gizmo runs, so it behaves the same.
+
+The native group is restored on unregister, so disabling the addon brings the
+stock gizmo straight back.
 """
 
 import bpy
-from bpy.types import Gizmo, GizmoGroup
-from mathutils import Matrix, Vector
+from bpy.types import GizmoGroup
 from bpy_extras.view3d_utils import (
     location_3d_to_region_2d,
     region_2d_to_location_3d,
 )
+from mathutils import Matrix, Vector
 
 from . import state
 from .operators import has_transform_target
 from .prefs import get_prefs
 
-#: Where the puck sits, as a multiple of the gizmo radius. Blender's axis tips
-#: land at 1.0 and the outermost ring at about 1.15, so this clears both.
-PUCK_DISTANCE = 1.3
+#: The native transform gizmo group, suppressed while this addon is enabled.
+NATIVE_GIZMO_GROUP = "VIEW3D_GGT_xform_gizmo"
 
-#: Puck radius as a fraction of the gizmo radius, and a floor in pixels so it
-#: stays comfortably clickable when the gizmo is small.
-PUCK_RADIUS_FRACTION = 0.13
-PUCK_RADIUS_MIN_PX = 8.0
+#: (mode, tool) the native gizmo was last suppressed for. Blender re-links the
+#: group whenever a tool is activated, so this has to be redone on each change.
+_suppressed_for = None
 
-#: Screen-space direction used when the transform has no axis constraint
-#: (uniform scale, screen-space move, view-axis rotation).
-_SCREEN_DIAGONAL = Vector((0.7071, 0.7071, 0.0))
+#: Handle sizes, in gizmo units. Measured against the native gizmo on screen:
+#: each primitive type has its own scale convention, so these are calibrated
+#: rather than derived.
+AXIS_SCALE = 0.41
+PLANE_SCALE = 0.028
+PLANE_OFFSET = 0.42
+CENTRE_SCALE = 0.11
+DIAL_SCALE = 0.41
+VIEW_DIAL_SCALE = 0.47
+
+ALPHA = 0.7
+ALPHA_HIGHLIGHT = 1.0
+
+AXIS_NAMES = ('X', 'Y', 'Z')
+
+#: (u, v, normal) for the XY, YZ and ZX plane handles. Blender colours a plane
+#: handle by the axis it is perpendicular to.
+PLANES = ((0, 1, 2), (1, 2, 0), (2, 0, 1))
 
 
 # ---------------------------------------------------------------------------
@@ -98,11 +119,7 @@ def _pose_pivot(context, pivot_mode):
 
 
 def pivot_world(context):
-    """Where Blender draws the transform gizmo, in world space.
-
-    Object Mode, Edit Mode (mesh) and Pose Mode are computed properly; other
-    edit modes fall back to the active object's origin.
-    """
+    """Where Blender draws the transform gizmo, in world space."""
     scene = context.scene
     pivot_mode = scene.tool_settings.transform_pivot_point
 
@@ -131,8 +148,14 @@ def pivot_world(context):
             for corner in o.bound_box
         ]
         return _bbox_centre(corners)
-    # Median point, and individual origins (whose gizmo also sits at the median).
     return _mean([o.matrix_world.translation for o in selected])
+
+
+def scene_orient_type(context):
+    try:
+        return context.scene.transform_orientation_slots[0].type
+    except (AttributeError, IndexError):
+        return 'GLOBAL'
 
 
 def orientation_matrix(context, orient_type):
@@ -157,15 +180,20 @@ def orientation_matrix(context, orient_type):
         orient_type = 'LOCAL'
 
     if orient_type in {'LOCAL', 'NORMAL', 'GIMBAL'}:
-        # NORMAL and GIMBAL depend on the selection, which we do not replicate;
-        # the object's own axes match exactly in Object Mode and are the closest
-        # cheap approximation elsewhere.
         if obj is not None:
             return obj.matrix_world.to_3x3().normalized()
+        return Matrix.Identity(3)
+
+    try:
+        custom = context.scene.transform_orientation_slots[0].custom_orientation
+        if custom is not None:
+            return custom.matrix.copy()
+    except (AttributeError, IndexError):
+        pass
     return Matrix.Identity(3)
 
 
-def _world_per_pixel(region, rv3d, location):
+def world_per_pixel(region, rv3d, location):
     """World units covered by one screen pixel at ``location``."""
     screen = location_3d_to_region_2d(region, rv3d, location)
     if screen is None:
@@ -179,41 +207,8 @@ def _world_per_pixel(region, rv3d, location):
     return (far - near).length
 
 
-def puck_direction(context, last):
-    """Unit world direction the puck is parked along."""
-    matrix = orientation_matrix(context, last.orient_type)
-
-    if last.kind == state.ROTATE:
-        index = last.rotate_axis_index
-        if index is not None:
-            return matrix.col[index].normalized()
-    else:
-        indices = last.axis_indices
-        if len(indices) == 1:
-            return matrix.col[indices[0]].normalized()
-        if len(indices) == 2:
-            # Park on the diagonal between the two axes of the plane.
-            combined = (
-                matrix.col[indices[0]].normalized()
-                + matrix.col[indices[1]].normalized()
-            )
-            if combined.length > 1e-6:
-                return combined.normalized()
-
-    # No axis constraint: pin it to a fixed screen-space diagonal so it stays
-    # somewhere predictable rather than jumping about with the view.
-    rv3d = context.region_data
-    if rv3d is not None:
-        return (rv3d.view_rotation @ _SCREEN_DIAGONAL).normalized()
-    return Vector((1.0, 0.0, 0.0))
-
-
 def transform_in_progress(context):
-    """True while a transform modal operator is running.
-
-    Covers dragging a native gizmo handle, the G/R/S shortcuts and this addon's
-    own middle mouse drag, since all three run a ``TRANSFORM_OT_*`` modal.
-    """
+    """True while a ``TRANSFORM_OT_*`` modal operator is running."""
     window = context.window
     if window is None:
         return False
@@ -227,147 +222,363 @@ def transform_in_progress(context):
     return False
 
 
-# ---------------------------------------------------------------------------
-# Gizmo
-# ---------------------------------------------------------------------------
-
-class MGB_GT_puck(Gizmo):
-    """A circle that reruns the last used transform when clicked or dragged."""
-
-    bl_idname = "MGB_GT_puck"
-    bl_target_properties = ()
-
-    #: Screen radius in pixels, refreshed by the group. Hit testing uses it
-    #: instead of the drawn geometry, so the whole disc is clickable rather
-    #: than just the thin ring.
-    __slots__ = ("radius_px",)
-
-    def setup(self):
-        self.radius_px = 12.0
-
-    def draw(self, context):
-        self.draw_preset_circle(self.matrix_world, axis='POS_Z')
-
-    # Deliberately no draw_select(): defining it makes Blender select via the
-    # drawn geometry and ignore test_select entirely, which would mean only the
-    # thin ring itself were clickable and not the disc inside it.
-    def test_select(self, context, location):
-        region = context.region
-        rv3d = context.region_data
-        if region is None or rv3d is None:
-            return -1
-        centre = location_3d_to_region_2d(
-            region, rv3d, self.matrix_world.translation
+def current_tool(context):
+    try:
+        tool = context.workspace.tools.from_space_view3d_mode(
+            context.mode, create=False
         )
-        if centre is None:
-            return -1
-        if (Vector(location) - centre).length <= max(self.radius_px, 8.0):
-            return 0
-        return -1
+    except Exception:
+        return None
+    return getattr(tool, "idname", None)
 
 
-class MGB_GGT_last_axis(GizmoGroup):
-    bl_idname = "MGB_GGT_last_axis"
-    bl_label = "Last Used Axis"
+def active_modes(context):
+    """Which of translate/rotate/scale gizmos Blender would be showing."""
+    space = context.space_data
+    modes = set()
+    if space is None or not space.show_gizmo:
+        return modes
+
+    if space.show_gizmo_object_translate:
+        modes.add(state.TRANSLATE)
+    if space.show_gizmo_object_rotate:
+        modes.add(state.ROTATE)
+    if space.show_gizmo_object_scale:
+        modes.add(state.RESIZE)
+
+    if space.show_gizmo_tool:
+        try:
+            tool = context.workspace.tools.from_space_view3d_mode(
+                context.mode, create=False
+            )
+        except Exception:
+            tool = None
+        idname = getattr(tool, "idname", None)
+        if idname == "builtin.move":
+            modes.add(state.TRANSLATE)
+        elif idname == "builtin.rotate":
+            modes.add(state.ROTATE)
+        elif idname in {"builtin.scale", "builtin.scale_cage"}:
+            modes.add(state.RESIZE)
+        elif idname == "builtin.transform":
+            modes |= {state.TRANSLATE, state.ROTATE, state.RESIZE}
+    return modes
+
+
+def axis_colors(context):
+    theme = context.preferences.themes[0].user_interface
+    return (
+        tuple(theme.axis_x)[:3],
+        tuple(theme.axis_y)[:3],
+        tuple(theme.axis_z)[:3],
+    )
+
+
+def last_used_key():
+    """Key of the handle to draw yellow, matching the handle dictionary."""
+    last = state.LAST
+    if not last.valid:
+        return None
+
+    if last.kind == state.ROTATE:
+        index = last.rotate_axis_index
+        if index is None:
+            return (state.ROTATE, 'view', 0)
+        return (state.ROTATE, 'dial', index)
+
+    if last.kind not in {state.TRANSLATE, state.RESIZE}:
+        return None
+
+    indices = last.axis_indices
+    if len(indices) == 1:
+        return (last.kind, 'axis', indices[0])
+    if len(indices) == 2:
+        for slot, (u, v, _normal) in enumerate(PLANES):
+            if {u, v} == set(indices):
+                return (last.kind, 'plane', slot)
+    return (last.kind, 'centre', 0)
+
+
+def _aim(direction):
+    """Rotation placing a gizmo's local +Z along ``direction``."""
+    return direction.to_track_quat('Z', 'Y').to_matrix().to_4x4()
+
+
+# ---------------------------------------------------------------------------
+# Gizmo group
+# ---------------------------------------------------------------------------
+
+class MGB_GGT_transform(GizmoGroup):
+    bl_idname = "MGB_GGT_transform"
+    bl_label = "Transform (Last Used Axis)"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'WINDOW'
-    # No 'SCALE': the puck's screen size is baked into its matrix instead, so a
-    # pixel radius means exactly that rather than depending on how Blender
-    # happens to map scale_basis to screen space.
-    # EXCLUDE_MODAL hides it while any gizmo is being dragged.
-    bl_options = {'3D', 'PERSISTENT', 'EXCLUDE_MODAL'}
+    # SCALE keeps handles a constant size on screen, as the native gizmo does.
+    # EXCLUDE_MODAL hides the whole set while one handle is being dragged.
+    bl_options = {'3D', 'PERSISTENT', 'SCALE', 'EXCLUDE_MODAL'}
 
     @classmethod
     def poll(cls, context):
+        # Activating a tool re-links its gizmo group, so the native transform
+        # gizmo comes back every time the tool or mode changes and has to be
+        # suppressed again. Keyed so this costs one comparison per poll.
         p = get_prefs(context)
-        if p is None or not p.show_highlight or not state.LAST.valid:
+        if p is None or not p.show_highlight:
             return False
+
+        global _suppressed_for
+        stamp = (context.mode, current_tool(context))
+        if stamp != _suppressed_for:
+            _suppressed_for = stamp
+            _suppress_native()
+
         space = context.space_data
         if space is None or space.type != 'VIEW_3D':
             return False
-        if p.highlight_requires_gizmo and not space.show_gizmo:
-            return False
-        # Hide while transforming, so the puck does not chase the selection
-        # around mid-drag. Blender's own gizmos behave the same way.
-        if transform_in_progress(context):
+        if not active_modes(context):
             return False
         return has_transform_target(context)
 
+    # -- construction ------------------------------------------------------
+
     def setup(self, context):
-        gz = self.gizmos.new(MGB_GT_puck.bl_idname)
-        gz.target_set_operator("mgb.transform_last_axis")
-        gz.use_draw_modal = False
-        gz.use_select_background = True
-        gz.use_tooltip = True
-        self.puck = gz
+        #: key -> gizmo, and key -> (operator properties, fixed orientation)
+        self.handles = {}
+        self.bindings = {}
+
+        for kind, style in ((state.TRANSLATE, 'NORMAL'), (state.RESIZE, 'BOX')):
+            operator = (
+                "transform.translate" if kind == state.TRANSLATE
+                else "transform.resize"
+            )
+            for index in range(3):
+                gz = self.gizmos.new("GIZMO_GT_arrow_3d")
+                gz.draw_style = style
+                gz.draw_options = {'STEM'}
+                gz.length = 1.0
+                constraint = [False, False, False]
+                constraint[index] = True
+                self._add(gz, (kind, 'axis', index), operator, tuple(constraint))
+
+            for slot, (u, v, _normal) in enumerate(PLANES):
+                gz = self.gizmos.new("GIZMO_GT_primitive_3d")
+                gz.draw_style = 'PLANE'
+                constraint = [False, False, False]
+                constraint[u] = constraint[v] = True
+                self._add(gz, (kind, 'plane', slot), operator, tuple(constraint))
+
+            gz = self.gizmos.new("GIZMO_GT_move_3d")
+            gz.draw_style = 'RING_2D'
+            self._add(gz, (kind, 'centre', 0), operator, None)
+
+        for index in range(3):
+            gz = self.gizmos.new("GIZMO_GT_dial_3d")
+            gz.draw_options = {'CLIP'}
+            constraint = [False, False, False]
+            constraint[index] = True
+            props = self._add(
+                gz, (state.ROTATE, 'dial', index), "transform.rotate",
+                tuple(constraint),
+            )
+            if props is not None:
+                try:
+                    props.orient_axis = AXIS_NAMES[index]
+                except Exception:
+                    pass
+
+        gz = self.gizmos.new("GIZMO_GT_dial_3d")
+        gz.draw_options = {'CLIP'}
+        self._add(
+            gz, (state.ROTATE, 'view', 0), "transform.rotate", None,
+            orient_type='VIEW',
+        )
+
+        for gz in self.gizmos:
+            gz.use_draw_modal = False
+
+    def _add(self, gz, key, operator, constraint, orient_type=None):
+        """Register a handle and attach the transform operator it runs."""
+        self.handles[key] = gz
+        props = None
+        try:
+            props = gz.target_set_operator(operator)
+            props.release_confirm = True
+            if constraint is not None:
+                props.constraint_axis = constraint
+            if orient_type is not None:
+                props.orient_type = orient_type
+        except Exception:
+            import traceback
+            traceback.print_exc()
+        self.bindings[key] = (props, orient_type)
+        return props
+
+    # -- placement ---------------------------------------------------------
 
     def refresh(self, context):
         self._place(context)
 
     def draw_prepare(self, context):
-        # The position depends on the view (it is a screen-space offset from the
-        # pivot), so it has to be recomputed every redraw, not just on refresh.
+        # Handle positions depend on the view, so they are recomputed on every
+        # redraw rather than only when the scene changes.
         self._place(context)
 
     def _place(self, context):
-        gz = self.puck
         p = get_prefs(context)
         region = context.region
         rv3d = context.region_data
         if p is None or region is None or rv3d is None:
-            gz.hide = True
+            self._hide_all()
             return
 
         pivot = pivot_world(context)
         if pivot is None:
-            gz.hide = True
+            self._hide_all()
+            return
+        unit = world_per_pixel(region, rv3d, pivot)
+        if not unit:
+            self._hide_all()
             return
 
-        world_per_pixel = _world_per_pixel(region, rv3d, pivot)
-        if not world_per_pixel:
+        orient_type = scene_orient_type(context)
+        self._sync_orient(orient_type)
+
+        matrix = orientation_matrix(context, orient_type)
+        axes = [matrix.col[i].normalized() for i in range(3)]
+        colors = axis_colors(context)
+
+        radius = context.preferences.view.gizmo_size * (
+            context.preferences.system.ui_scale or 1.0
+        ) * unit
+
+        modes = active_modes(context)
+        # Hide everything mid-transform, unless one of our own handles is
+        # driving it -- hiding a gizmo that is mid-drag is not safe.
+        freeze = transform_in_progress(context) and not any(
+            gz.is_modal for gz in self.gizmos
+        )
+        highlight = last_used_key()
+        yellow = tuple(p.highlight_color)
+        translation = Matrix.Translation(pivot)
+        view_rotation = rv3d.view_rotation.to_matrix().to_4x4()
+
+        for key, gz in self.handles.items():
+            kind, role, index = key
+            if freeze or kind not in modes:
+                gz.hide = True
+                continue
+            gz.hide = False
+
+            if role == 'axis':
+                gz.matrix_basis = translation @ _aim(axes[index])
+                gz.scale_basis = AXIS_SCALE
+                base = colors[index]
+            elif role == 'plane':
+                u, v, normal = PLANES[index]
+                offset = (axes[u] + axes[v]) * (PLANE_OFFSET * radius)
+                gz.matrix_basis = (
+                    Matrix.Translation(pivot + offset) @ _aim(axes[normal])
+                )
+                gz.scale_basis = PLANE_SCALE
+                base = colors[normal]
+            elif role == 'dial':
+                gz.matrix_basis = translation @ _aim(axes[index])
+                gz.scale_basis = DIAL_SCALE
+                base = colors[index]
+            elif role == 'view':
+                gz.matrix_basis = translation @ view_rotation
+                gz.scale_basis = VIEW_DIAL_SCALE
+                base = (1.0, 1.0, 1.0)
+            else:  # centre
+                gz.matrix_basis = translation @ view_rotation
+                gz.scale_basis = CENTRE_SCALE
+                base = (1.0, 1.0, 1.0)
+
+            is_last = key == highlight
+            gz.color = yellow if is_last else base
+            gz.color_highlight = yellow if is_last else (1.0, 1.0, 1.0)
+            gz.alpha = p.highlight_alpha if is_last else ALPHA
+            gz.alpha_highlight = ALPHA_HIGHLIGHT
+
+    def _hide_all(self):
+        for gz in self.gizmos:
             gz.hide = True
-            return
 
-        ui_scale = context.preferences.system.ui_scale or 1.0
-        radius_px = context.preferences.view.gizmo_size * ui_scale
-        offset = radius_px * PUCK_DISTANCE * world_per_pixel
+    def _sync_orient(self, orient_type):
+        """Keep handles running whatever orientation the scene is set to."""
+        for props, fixed in self.bindings.values():
+            if props is None or fixed is not None:
+                continue
+            try:
+                props.orient_type = orient_type
+            except Exception:
+                pass
 
-        direction = puck_direction(context, state.LAST)
-        position = pivot + direction * offset
 
-        puck_px = max(
-            radius_px * PUCK_RADIUS_FRACTION * p.highlight_scale,
-            PUCK_RADIUS_MIN_PX,
+# ---------------------------------------------------------------------------
+# Registration
+# ---------------------------------------------------------------------------
+
+def _suppress_native():
+    try:
+        bpy.types.WindowManager.gizmo_group_type_unlink_delayed(
+            NATIVE_GIZMO_GROUP
         )
-        # Rotate to face the viewer (otherwise the circle lies flat in the world
-        # XY plane) and bake the radius into the matrix, so the circle that
-        # draw_preset_circle draws at radius 1.0 lands at exactly puck_px pixels.
-        gz.matrix_basis = (
-            Matrix.Translation(position)
-            @ rv3d.view_rotation.to_matrix().to_4x4()
-            @ Matrix.Scale(puck_px * world_per_pixel, 4)
-        )
-        gz.scale_basis = 1.0
-        gz.radius_px = puck_px
-        gz.line_width = 3.0
-        gz.color = tuple(p.highlight_color)
-        gz.alpha = p.highlight_alpha
-        gz.color_highlight = tuple(min(1.0, c + 0.25) for c in p.highlight_color)
-        gz.alpha_highlight = min(1.0, p.highlight_alpha + 0.2)
-        gz.hide = False
+    except Exception:
+        import traceback
+        traceback.print_exc()
 
 
-_CLASSES = (
-    MGB_GT_puck,
-    MGB_GGT_last_axis,
-)
+def _restore_native():
+    try:
+        bpy.types.WindowManager.gizmo_group_type_ensure(NATIVE_GIZMO_GROUP)
+    except Exception:
+        import traceback
+        traceback.print_exc()
+
+
+def set_enabled(enabled):
+    """Swap between our gizmo and Blender's stock one.
+
+    Turning the highlight off has to hand the native gizmo back rather than
+    simply hiding ours, otherwise the viewport would be left with no transform
+    gizmo at all.
+    """
+    global _suppressed_for
+    if bpy.app.background:
+        return
+    _suppressed_for = None
+    if enabled:
+        _suppress_native()
+    else:
+        _restore_native()
+
+
+@bpy.app.handlers.persistent
+def _on_load(_dummy):
+    # Loading a file rebuilds the tools, which re-links the native group.
+    global _suppressed_for
+    _suppressed_for = None
 
 
 def register():
-    for cls in _CLASSES:
-        bpy.utils.register_class(cls)
+    global _suppressed_for
+    bpy.utils.register_class(MGB_GGT_transform)
+    if bpy.app.background:
+        return
+    _suppressed_for = None
+    _suppress_native()
+    if _on_load not in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.append(_on_load)
 
 
 def unregister():
-    for cls in reversed(_CLASSES):
-        bpy.utils.unregister_class(cls)
+    global _suppressed_for
+    if _on_load in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(_on_load)
+    # Give the stock transform gizmo back first, so a later failure cannot
+    # leave the viewport without a transform gizmo at all.
+    if not bpy.app.background:
+        _restore_native()
+    _suppressed_for = None
+    bpy.utils.unregister_class(MGB_GGT_transform)

@@ -33,6 +33,12 @@ def _keymap_update(self, context):
     keymaps.reapply()
 
 
+def _gizmo_update(self, context):
+    """Swap between our recolourable gizmo and Blender's stock one."""
+    from . import gizmo
+    gizmo.set_enabled(self.show_highlight)
+
+
 class MayaGizmoPreferences(AddonPreferences):
     bl_idname = ADDON_ID
 
@@ -117,21 +123,18 @@ class MayaGizmoPreferences(AddonPreferences):
     # -- Highlight -------------------------------------------------------------
 
     show_highlight: BoolProperty(
-        name="Show Axis Handle",
+        name="Highlight Last Used Axis",
         description=(
-            "Show the yellow handle marking the last used axis. Click or drag "
-            "it to run the same transform a middle mouse drag would"
+            "Draw the last used transform handle in yellow. This replaces "
+            "Blender's transform gizmo with an equivalent one that can be "
+            "recoloured; turning it off restores the stock gizmo"
         ),
         default=True,
-    )
-    highlight_requires_gizmo: BoolProperty(
-        name="Only With Gizmos Visible",
-        description="Hide the handle when viewport gizmos are turned off",
-        default=True,
+        update=_gizmo_update,
     )
     highlight_color: FloatVectorProperty(
         name="Color",
-        description="Handle color",
+        description="Colour of the last used handle",
         subtype='COLOR',
         size=3,
         min=0.0,
@@ -140,15 +143,9 @@ class MayaGizmoPreferences(AddonPreferences):
     )
     highlight_alpha: FloatProperty(
         name="Opacity",
+        description="Opacity of the last used handle",
         min=0.0,
         max=1.0,
-        default=0.9,
-    )
-    highlight_scale: FloatProperty(
-        name="Size",
-        description="Multiplier on the handle size",
-        min=0.1,
-        max=4.0,
         default=1.0,
     )
 
@@ -197,16 +194,14 @@ class MayaGizmoPreferences(AddonPreferences):
                 box.label(text=line, icon='ERROR')
 
         box = layout.box()
-        box.label(text="Axis Handle", icon='PROP_ON')
+        box.label(text="Last Used Axis", icon='EMPTY_ARROWS')
         col = box.column()
         col.prop(self, "show_highlight")
         sub = col.column()
         sub.enabled = self.show_highlight
-        sub.prop(self, "highlight_requires_gizmo")
         row = sub.row(align=True)
         row.prop(self, "highlight_color", text="")
         row.prop(self, "highlight_alpha", text="Opacity", slider=True)
-        sub.prop(self, "highlight_scale")
 
         box = layout.box()
         box.label(text="Reset", icon='LOOP_BACK')

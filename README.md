@@ -8,12 +8,13 @@ you can keep transforming along it by middle-mouse-dragging anywhere in the
 viewport, without having to hit the handle again. This addon does the same in
 Blender.
 
-| Move along one axis | Rotate around an axis | Uniform scale |
+| Move along X | Move on the XY plane | Rotate around Z |
 |---|---|---|
-| ![Move X](docs/images/axis-x.png) | ![Rotate Z](docs/images/rotate-z.png) | ![Scale](docs/images/scale-uniform.png) |
+| ![Move X](docs/images/axis-x.png) | ![Move XY](docs/images/plane-xy.png) | ![Rotate Z](docs/images/rotate-z.png) |
 
-The yellow circle marks the axis that will be reused. It parks just outside the
-gizmo, pointing the way, and you can click or drag it directly.
+The handle you last used is drawn in yellow, right on the gizmo. It is a normal
+handle otherwise -- drag it and it moves, rotates or scales exactly as it always
+did.
 
 ---
 
@@ -26,15 +27,12 @@ the keyboard — either way the addon remembers *Move, X, Global*. Rotation dial
 scale handles, plane handles and the screen-space / uniform handles are all
 tracked, along with the transform orientation you used.
 
-**2. A yellow circle marks it, and is itself a handle.**
+**2. That handle turns yellow.**
 
-The circle sits just beyond the tip of Blender's gizmo, along the axis that will
-be reused, so you can always see what is about to happen. It is the same circle
-for move, rotate and scale. Click or drag it and you get exactly the transform a
-middle mouse drag would give you.
-
-Like Blender's own gizmos, it disappears while a transform is running and comes
-back when you let go, so it never drifts around mid-drag.
+Not a marker on top of the gizmo -- the handle itself. The X arrow, the XY plane
+square, the Z rotation dial, the uniform scale ring: whichever one you last used
+is drawn yellow instead of its usual axis colour, so you can always see what a
+middle mouse drag is about to do.
 
 **3. Middle-mouse-drag re-runs that transform, anywhere in the viewport.**
 
@@ -128,10 +126,10 @@ them, so it asks for confirmation first.
 | Context Menu On Click | on | Retimes the viewport context menus from press to click. |
 | Also Pan/Zoom With Right Mouse | **off** | Adds Shift+RMB pan and Ctrl+RMB zoom. Off by default because those collide with placing the 3D cursor and with lasso select. Pan and zoom already work on Shift+MMB and Ctrl+MMB. |
 
-### Axis handle
+### Last used axis
 
-Colour, opacity, size, whether to show the circle at all, and whether to hide it
-when viewport gizmos are off.
+**Highlight Last Used Axis** (on), plus the colour and opacity of the
+highlighted handle. Turning it off restores Blender's stock transform gizmo.
 
 ---
 
@@ -143,11 +141,19 @@ every finished transform lands in `wm.operators` carrying its `constraint_axis`
 and `orient_type` — the same data the F9 redo panel shows. One code path
 therefore covers gizmo drags and keyboard shortcuts equally.
 
-The yellow circle is a real `GizmoGroup`, not a GPU overlay. That is what makes
-it clickable, gives it a hover highlight, and lets it hide itself during a
-transform. Its `poll()` checks `window.modal_operators` for a running
-`TRANSFORM_OT_*`, which covers dragging a native handle, the `G`/`R`/`S`
-shortcuts and this addon's own middle mouse drag in one test.
+Recolouring one handle of Blender's own transform gizmo is not possible from
+Python, and the theme route does not work either: the gizmo takes its axis
+colours from `theme.user_interface.axis_x/y/z`, which also drive the viewport
+floor grid lines and the navigation gizmo, so turning "X" yellow turns the whole
+X grid line yellow with it.
+
+So the addon rebuilds the move / rotate / scale gizmos from Blender's own
+built-in gizmo *types* -- the same `arrow_3d`, `dial_3d`, `primitive_3d` and
+`move_3d` primitives the native one is made of -- and suppresses the native
+group with `gizmo_group_type_unlink_delayed`. Each handle runs the same
+`transform.*` operator the native one runs, so behaviour is unchanged; only the
+colour of the last used handle differs. Activating a tool re-links its gizmo
+group, so the suppression is re-applied whenever the tool or mode changes.
 
 The middle mouse binding starts a genuine `transform.translate` / `rotate` /
 `resize` with `release_confirm` set, which is why it feels identical to dragging
@@ -155,11 +161,16 @@ the handle rather than like a scripted nudge.
 
 ### Known limitations
 
-- For the **Normal** and **Gimbal** orientations the circle is placed using
+- The gizmo is a **rebuild**, not the native one, so it is very close but not
+  pixel-identical: handle shapes and shading differ slightly, and the extras the
+  native gizmo grew over the years (depth-sorted handle occlusion, the exact
+  plane-handle flipping) are not reproduced. Turn the highlight off in
+  preferences to get the stock gizmo back at any time.
+- For the **Normal** and **Gimbal** orientations the handles are placed using
   the object's own axes, which is exact in Object Mode but only an approximation
   in Edit Mode. The transform itself is always correct — only the drawing
   approximates.
-- The circle's pivot is computed properly for Object Mode, Edit Mode (mesh) and
+- The gizmo pivot is computed properly for Object Mode, Edit Mode (mesh) and
   Pose Mode. Other edit modes fall back to the object origin.
 - On the **right-click-select** keymap the RMB-drag orbit is skipped
   automatically, since right mouse already selects there. Everything else works.

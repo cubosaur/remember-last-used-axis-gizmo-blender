@@ -3,6 +3,32 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-08-11
+
+### Changed
+
+- The last used axis is now shown by **colouring the transform gizmo handle
+  itself yellow** instead of adding a separate marker. The yellow circle from
+  1.1.0 is gone.
+- To make that possible the move / rotate / scale gizmos are rebuilt from
+  Blender's own built-in gizmo primitives, and the native transform gizmo group
+  is suppressed while the addon is enabled. Handles run the same `transform.*`
+  operators as before, so dragging them behaves identically.
+- Turning **Highlight Last Used Axis** off now restores Blender's stock
+  transform gizmo, rather than leaving the viewport without one.
+
+### Removed
+
+- The **Size** and **Only With Gizmos Visible** preferences, which no longer
+  apply. Handle sizes follow Blender's own gizmo size preference, and the gizmo
+  already appears exactly when Blender's would.
+
+### Notes
+
+- Recolouring via the theme was evaluated and rejected: the transform gizmo
+  takes its axis colours from `theme.user_interface.axis_x/y/z`, which also
+  colour the viewport floor grid lines and the navigation gizmo.
+
 ## [1.1.0] - 2026-08-11
 
 ### Changed
@@ -54,5 +80,6 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.2.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.0
 [1.1.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.1.0
 [1.0.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.0.0
