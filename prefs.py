@@ -117,18 +117,21 @@ class MayaGizmoPreferences(AddonPreferences):
     # -- Highlight -------------------------------------------------------------
 
     show_highlight: BoolProperty(
-        name="Highlight Last Used Axis",
-        description="Draw the last used gizmo axis in the viewport",
+        name="Show Axis Handle",
+        description=(
+            "Show the yellow handle marking the last used axis. Click or drag "
+            "it to run the same transform a middle mouse drag would"
+        ),
         default=True,
     )
     highlight_requires_gizmo: BoolProperty(
         name="Only With Gizmos Visible",
-        description="Hide the highlight when viewport gizmos are turned off",
+        description="Hide the handle when viewport gizmos are turned off",
         default=True,
     )
     highlight_color: FloatVectorProperty(
         name="Color",
-        description="Highlight color",
+        description="Handle color",
         subtype='COLOR',
         size=3,
         min=0.0,
@@ -141,19 +144,9 @@ class MayaGizmoPreferences(AddonPreferences):
         max=1.0,
         default=0.9,
     )
-    highlight_width: FloatProperty(
-        name="Line Width",
-        description="Thickness of the highlight in pixels",
-        min=1.0,
-        max=20.0,
-        default=5.0,
-    )
     highlight_scale: FloatProperty(
         name="Size",
-        description=(
-            "Multiplier on the highlight size. Nudge this if the highlight does "
-            "not line up with your gizmo"
-        ),
+        description="Multiplier on the handle size",
         min=0.1,
         max=4.0,
         default=1.0,
@@ -204,7 +197,7 @@ class MayaGizmoPreferences(AddonPreferences):
                 box.label(text=line, icon='ERROR')
 
         box = layout.box()
-        box.label(text="Highlight", icon='SNAP_FACE_CENTER')
+        box.label(text="Axis Handle", icon='PROP_ON')
         col = box.column()
         col.prop(self, "show_highlight")
         sub = col.column()
@@ -213,7 +206,6 @@ class MayaGizmoPreferences(AddonPreferences):
         row = sub.row(align=True)
         row.prop(self, "highlight_color", text="")
         row.prop(self, "highlight_alpha", text="Opacity", slider=True)
-        sub.prop(self, "highlight_width")
         sub.prop(self, "highlight_scale")
 
         box = layout.box()

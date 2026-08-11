@@ -3,6 +3,25 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-08-11
+
+### Changed
+
+- The last used axis is now marked by a single yellow circle parked just outside
+  the tip of Blender's gizmo, pointing along the axis. It replaces the previous
+  set of shapes (axis bar, plane quad, rotation arc, centre ring) and is the
+  same circle for move, rotate and scale.
+- That circle is a real gizmo, so it can be **clicked or dragged directly** to
+  run the same transform a middle mouse drag does.
+- It now **hides while a transform is running** and reappears when the drag
+  ends, matching how Blender's own gizmos behave. Previously it stayed on screen
+  and drifted about as the selection moved.
+
+### Removed
+
+- The **Line Width** preference, which no longer applies now that the marker is
+  a circle rather than drawn lines. Colour, opacity and size remain.
+
 ## [1.0.0] - 2026-08-10
 
 Initial release.
@@ -35,4 +54,5 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.1.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.1.0
 [1.0.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.0.0

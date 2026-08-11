@@ -28,7 +28,7 @@ def _active_tool_kind(context):
     return _TOOL_KINDS.get(tool.idname)
 
 
-def _has_transform_target(context):
+def has_transform_target(context):
     """Whether there is anything for a transform to act on."""
     if context.mode == 'OBJECT':
         return bool(context.selected_objects)
@@ -76,7 +76,7 @@ class MGB_OT_transform_last_axis(Operator):
         if kind is None:
             kind = last.kind if last.valid else None
 
-        if kind is None or not _has_transform_target(context):
+        if kind is None or not has_transform_target(context):
             if p.fallback_orbit:
                 _orbit_operator(context)('INVOKE_DEFAULT')
                 return {'FINISHED'}

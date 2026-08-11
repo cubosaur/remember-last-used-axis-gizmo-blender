@@ -152,9 +152,29 @@ def _safe_enum(props, name, fallback):
     return value if value else fallback
 
 
+#: Draw handler used purely as a "something happened" tick. Blender offers no
+#: operator-finished callback, and a viewport redraw is the closest equivalent.
+#: It draws nothing.
+_handle = None
+
+
+def _on_redraw():
+    capture()
+
+
 def register():
+    global _handle
     LAST.reset()
+    if bpy.app.background or _handle is not None:
+        return
+    _handle = bpy.types.SpaceView3D.draw_handler_add(
+        _on_redraw, (), 'WINDOW', 'POST_VIEW'
+    )
 
 
 def unregister():
+    global _handle
+    if _handle is not None:
+        bpy.types.SpaceView3D.draw_handler_remove(_handle, 'WINDOW')
+        _handle = None
     LAST.reset()

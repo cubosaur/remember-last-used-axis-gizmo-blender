@@ -18,17 +18,17 @@ the addon is disabled, and can be reverted at any time from the preferences.
 from . import prefs
 from . import state
 from . import operators
-from . import overlay
+from . import gizmo
 from . import keymaps
 from . import ui
 
 # Registration order matters: preferences hold the settings every other module
-# reads, and the keymap module needs the operators to already exist.
+# reads, and the gizmo and keymap modules need the operators to already exist.
 _MODULES = (
     prefs,
     state,
     operators,
-    overlay,
+    gizmo,
     keymaps,
     ui,
 )

@@ -8,9 +8,12 @@ you can keep transforming along it by middle-mouse-dragging anywhere in the
 viewport, without having to hit the handle again. This addon does the same in
 Blender.
 
-| Move along one axis | Move on a plane | Rotate around an axis |
+| Move along one axis | Rotate around an axis | Uniform scale |
 |---|---|---|
-| ![Move X](docs/images/axis-x.png) | ![Move XY](docs/images/plane-xy.png) | ![Rotate Z](docs/images/rotate-z.png) |
+| ![Move X](docs/images/axis-x.png) | ![Rotate Z](docs/images/rotate-z.png) | ![Scale](docs/images/scale-uniform.png) |
+
+The yellow circle marks the axis that will be reused. It parks just outside the
+gizmo, pointing the way, and you can click or drag it directly.
 
 ---
 
@@ -23,16 +26,21 @@ the keyboard — either way the addon remembers *Move, X, Global*. Rotation dial
 scale handles, plane handles and the screen-space / uniform handles are all
 tracked, along with the transform orientation you used.
 
-**2. It highlights that handle in yellow.**
+**2. A yellow circle marks it, and is itself a handle.**
 
-The remembered handle is drawn in yellow on top of Blender's own gizmo, so you
-can always see what a middle mouse drag is about to do.
+The circle sits just beyond the tip of Blender's gizmo, along the axis that will
+be reused, so you can always see what is about to happen. It is the same circle
+for move, rotate and scale. Click or drag it and you get exactly the transform a
+middle mouse drag would give you.
+
+Like Blender's own gizmos, it disappears while a transform is running and comes
+back when you let go, so it never drifts around mid-drag.
 
 **3. Middle-mouse-drag re-runs that transform, anywhere in the viewport.**
 
 Press MMB, drag, release. It is a real interactive transform: the drag distance
 drives the amount, the header shows the live value, and it confirms when you
-release the button. You never have to hit the handle itself.
+release the button. You never have to hit a handle at all.
 
 **4. Viewport orbit moves to right-mouse-drag.**
 
@@ -120,10 +128,10 @@ them, so it asks for confirmation first.
 | Context Menu On Click | on | Retimes the viewport context menus from press to click. |
 | Also Pan/Zoom With Right Mouse | **off** | Adds Shift+RMB pan and Ctrl+RMB zoom. Off by default because those collide with placing the 3D cursor and with lasso select. Pan and zoom already work on Shift+MMB and Ctrl+MMB. |
 
-### Highlight
+### Axis handle
 
-Colour, opacity, line width, size, whether to show it at all, and whether to
-hide it when viewport gizmos are off.
+Colour, opacity, size, whether to show the circle at all, and whether to hide it
+when viewport gizmos are off.
 
 ---
 
@@ -135,10 +143,11 @@ every finished transform lands in `wm.operators` carrying its `constraint_axis`
 and `orient_type` — the same data the F9 redo panel shows. One code path
 therefore covers gizmo drags and keyboard shortcuts equally.
 
-The highlight is drawn in a `POST_PIXEL` draw handler. Blender draws 3D gizmos
-between the `POST_VIEW` and `POST_PIXEL` callbacks, so `POST_PIXEL` is what
-lands on top of the gizmo, and working in screen space means the highlight is
-automatically the same pixel size as the gizmo.
+The yellow circle is a real `GizmoGroup`, not a GPU overlay. That is what makes
+it clickable, gives it a hover highlight, and lets it hide itself during a
+transform. Its `poll()` checks `window.modal_operators` for a running
+`TRANSFORM_OT_*`, which covers dragging a native handle, the `G`/`R`/`S`
+shortcuts and this addon's own middle mouse drag in one test.
 
 The middle mouse binding starts a genuine `transform.translate` / `rotate` /
 `resize` with `release_confirm` set, which is why it feels identical to dragging
@@ -146,14 +155,11 @@ the handle rather than like a scripted nudge.
 
 ### Known limitations
 
-- The highlight is drawn **over** Blender's gizmo rather than recolouring the
-  handle itself, which Python cannot do. On a plane handle you may see a sliver
-  of the original colour at the edge.
-- For the **Normal** and **Gimbal** orientations the highlight is drawn using
+- For the **Normal** and **Gimbal** orientations the circle is placed using
   the object's own axes, which is exact in Object Mode but only an approximation
   in Edit Mode. The transform itself is always correct — only the drawing
   approximates.
-- The highlight pivot is computed properly for Object Mode, Edit Mode (mesh) and
+- The circle's pivot is computed properly for Object Mode, Edit Mode (mesh) and
   Pose Mode. Other edit modes fall back to the object origin.
 - On the **right-click-select** keymap the RMB-drag orbit is skipped
   automatically, since right mouse already selects there. Everything else works.
