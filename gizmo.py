@@ -20,10 +20,6 @@ stock gizmo straight back.
 
 import bpy
 from bpy.types import GizmoGroup
-from bpy_extras.view3d_utils import (
-    location_3d_to_region_2d,
-    region_2d_to_location_3d,
-)
 from mathutils import Matrix, Vector
 
 from . import state
@@ -40,12 +36,27 @@ _suppressed_for = None
 #: Handle sizes, in gizmo units. Measured against the native gizmo on screen:
 #: each primitive type has its own scale convention, so these are calibrated
 #: rather than derived.
-AXIS_SCALE = 0.41
+AXIS_SCALE = 0.44
 PLANE_SCALE = 0.028
-PLANE_OFFSET = 0.42
-CENTRE_SCALE = 0.11
-DIAL_SCALE = 0.41
-VIEW_DIAL_SCALE = 0.47
+CENTRE_SCALE = 0.14
+DIAL_SCALE = 0.44
+VIEW_DIAL_SCALE = 0.60
+
+#: How far out the plane handles sit, as a fraction of the axis length.
+PLANE_OFFSET_FRACTION = 0.4
+#: The same offset expressed in the plane gizmo's own scaled units, which is
+#: what ``matrix_offset`` takes once ``use_draw_offset_scale`` is on.
+PLANE_OFFSET_UNITS = PLANE_OFFSET_FRACTION * AXIS_SCALE / PLANE_SCALE
+
+#: Line weights, in pixels at a UI scale of 1. These are multiplied by the UI
+#: scale at draw time: ``Gizmo.line_width`` is a raw pixel count, while
+#: Blender's own gizmo lines scale with the interface, so a fixed value looks
+#: right at 1x and far too thin on a HiDPI display.
+AXIS_LINE_WIDTH = 1.35
+DIAL_LINE_WIDTH = 1.35
+RING_LINE_WIDTH = 1.35
+#: The view-aligned outer ring is a thin outline in Blender, not a fat dial.
+VIEW_RING_LINE_WIDTH = 0.9
 
 ALPHA = 0.7
 ALPHA_HIGHLIGHT = 1.0
@@ -193,20 +204,6 @@ def orientation_matrix(context, orient_type):
     return Matrix.Identity(3)
 
 
-def world_per_pixel(region, rv3d, location):
-    """World units covered by one screen pixel at ``location``."""
-    screen = location_3d_to_region_2d(region, rv3d, location)
-    if screen is None:
-        return None
-    near = region_2d_to_location_3d(region, rv3d, screen, location)
-    far = region_2d_to_location_3d(
-        region, rv3d, screen + Vector((1.0, 0.0)), location
-    )
-    if near is None or far is None:
-        return None
-    return (far - near).length
-
-
 def transform_in_progress(context):
     """True while a ``TRANSFORM_OT_*`` modal operator is running."""
     window = context.window
@@ -304,6 +301,16 @@ def _aim(direction):
     return direction.to_track_quat('Z', 'Y').to_matrix().to_4x4()
 
 
+def _basis(x_axis, y_axis, z_axis, translation):
+    """Matrix whose columns are the given axes, positioned at ``translation``."""
+    return Matrix((
+        (x_axis.x, y_axis.x, z_axis.x, translation.x),
+        (x_axis.y, y_axis.y, z_axis.y, translation.y),
+        (x_axis.z, y_axis.z, z_axis.z, translation.z),
+        (0.0, 0.0, 0.0, 1.0),
+    ))
+
+
 # ---------------------------------------------------------------------------
 # Gizmo group
 # ---------------------------------------------------------------------------
@@ -363,6 +370,12 @@ class MGB_GGT_transform(GizmoGroup):
             for slot, (u, v, _normal) in enumerate(PLANES):
                 gz = self.gizmos.new("GIZMO_GT_primitive_3d")
                 gz.draw_style = 'PLANE'
+                # Let Blender scale the offset along with the gizmo, so the
+                # handle keeps a fixed screen offset from the pivot.
+                gz.use_draw_offset_scale = True
+                gz.matrix_offset = Matrix.Translation(
+                    (PLANE_OFFSET_UNITS, PLANE_OFFSET_UNITS, 0.0)
+                )
                 constraint = [False, False, False]
                 constraint[u] = constraint[v] = True
                 self._add(gz, (kind, 'plane', slot), operator, tuple(constraint))
@@ -435,10 +448,6 @@ class MGB_GGT_transform(GizmoGroup):
         if pivot is None:
             self._hide_all()
             return
-        unit = world_per_pixel(region, rv3d, pivot)
-        if not unit:
-            self._hide_all()
-            return
 
         orient_type = scene_orient_type(context)
         self._sync_orient(orient_type)
@@ -447,9 +456,10 @@ class MGB_GGT_transform(GizmoGroup):
         axes = [matrix.col[i].normalized() for i in range(3)]
         colors = axis_colors(context)
 
-        radius = context.preferences.view.gizmo_size * (
-            context.preferences.system.ui_scale or 1.0
-        ) * unit
+        # Gizmo.line_width is a raw pixel count and does not follow the
+        # interface scale the way Blender's own gizmo lines do, so scale it here
+        # or the handles come out hairline-thin on a HiDPI display.
+        ui_scale = context.preferences.system.ui_scale or 1.0
 
         modes = active_modes(context)
         # Hide everything mid-transform, unless one of our own handles is
@@ -472,26 +482,32 @@ class MGB_GGT_transform(GizmoGroup):
             if role == 'axis':
                 gz.matrix_basis = translation @ _aim(axes[index])
                 gz.scale_basis = AXIS_SCALE
+                gz.line_width = AXIS_LINE_WIDTH * ui_scale
                 base = colors[index]
             elif role == 'plane':
                 u, v, normal = PLANES[index]
-                offset = (axes[u] + axes[v]) * (PLANE_OFFSET * radius)
-                gz.matrix_basis = (
-                    Matrix.Translation(pivot + offset) @ _aim(axes[normal])
-                )
+                # Basis columns are (u, v, normal), so the handle's local X and
+                # Y are the two axes of its plane and matrix_offset can push it
+                # out along both. Blender scales that offset itself, which keeps
+                # it rock steady while orbiting -- deriving the offset from a
+                # world-per-pixel estimate wobbled by around 10% per frame.
+                gz.matrix_basis = _basis(axes[u], axes[v], axes[normal], pivot)
                 gz.scale_basis = PLANE_SCALE
                 base = colors[normal]
             elif role == 'dial':
                 gz.matrix_basis = translation @ _aim(axes[index])
                 gz.scale_basis = DIAL_SCALE
+                gz.line_width = DIAL_LINE_WIDTH * ui_scale
                 base = colors[index]
             elif role == 'view':
                 gz.matrix_basis = translation @ view_rotation
                 gz.scale_basis = VIEW_DIAL_SCALE
+                gz.line_width = VIEW_RING_LINE_WIDTH * ui_scale
                 base = (1.0, 1.0, 1.0)
             else:  # centre
                 gz.matrix_basis = translation @ view_rotation
                 gz.scale_basis = CENTRE_SCALE
+                gz.line_width = RING_LINE_WIDTH * ui_scale
                 base = (1.0, 1.0, 1.0)
 
             is_last = key == highlight

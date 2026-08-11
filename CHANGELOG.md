@@ -3,6 +3,23 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-08-11
+
+### Fixed
+
+- Handles were drawn far too thin, especially on HiDPI displays.
+  ``Gizmo.line_width`` is a raw pixel count and does not follow the interface
+  scale the way Blender's own gizmo lines do, so the line weight is now scaled
+  by the UI scale at draw time. Axis, dial and ring weights were calibrated
+  against the native gizmo at both 1x and 2x interface scale.
+- Handle lengths and the rotation gizmo's outer ring were resized to match the
+  native gizmo more closely.
+- The move and scale plane handles drifted and popped about while orbiting.
+  Their offset was derived from a world-per-pixel estimate that wobbled by
+  around 10% from frame to frame; they now use ``matrix_offset`` with
+  ``use_draw_offset_scale``, letting Blender scale the offset itself, which is
+  the mechanism the native gizmo uses.
+
 ## [1.2.0] - 2026-08-11
 
 ### Changed
