@@ -3,6 +3,37 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.7] - 2026-08-12
+
+### Fixed
+
+- Two transform gizmos could still be drawn at once, the second slightly
+  larger, whenever the **Object Gizmos** boxes were ticked and the active tool
+  had no transform gizmo of its own -- Tweak, Annotate, Measure and the rest.
+  Blender serves those boxes from `VIEW3D_GGT_xform_gizmo_context`, which is
+  flagged `PERSISTENT` and cannot be unlinked from Python, so this addon was
+  drawing a second set on top of one it had no way to remove. That case is left
+  to Blender now: its stock gizmo, without the highlight.
+- The active tool takes precedence over the Object Gizmos boxes, which is what
+  Blender does -- measured, the Scale tool with all three boxes ticked is pixel
+  for pixel the Scale tool with none of them ticked. This addon was combining
+  the two instead, so ticking a box while a transform tool was active drew
+  handles Blender would not have.
+- The Scale gizmo was missing the thin outer ring that uniform scale rides on,
+  so it looked wrong next to Blender's with **Highlight Last Used Axis** off.
+  The ring is back, and its radius is corrected from 142px to 137px against the
+  native gizmo's 137px. The rotation gizmo's outer ring is the same ring, so it
+  tightens by the same amount.
+
+### Verified
+
+- With a non-transform tool and the Object Gizmos boxes ticked, the viewport is
+  pixel for pixel Blender's own: 4604 pixels changed against a gizmo-free plate
+  of the same view, with the addon on or off.
+- The Scale tool matches the native gizmo -- outer ring, plane handles, axis
+  boxes and centre circle all in the same places -- and the Move, Rotate and
+  Transform tools are unchanged.
+
 ## [1.2.6] - 2026-08-12
 
 ### Fixed
@@ -219,6 +250,7 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.2.7]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.7
 [1.2.6]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.6
 [1.2.5]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.5
 [1.2.4]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.4

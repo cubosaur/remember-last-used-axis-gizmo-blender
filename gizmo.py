@@ -43,7 +43,7 @@ AXIS_SCALE = 1.21
 PLANE_SCALE = 0.059
 CENTRE_SCALE = 0.187
 DIAL_SCALE = 0.92
-VIEW_DIAL_SCALE = 1.25
+VIEW_DIAL_SCALE = 1.20
 
 #: How far out the plane handles sit, as a fraction of the axis length.
 PLANE_OFFSET_FRACTION = 0.4
@@ -258,26 +258,26 @@ def active_modes(context):
     if space is None or not space.show_gizmo:
         return modes
 
-    # The Object Gizmos boxes only take effect under "Active Object": with that
-    # off Blender draws nothing for them, so neither should we.
-    if space.show_gizmo_context:
-        if space.show_gizmo_object_translate:
-            modes.add(state.TRANSLATE)
-        if space.show_gizmo_object_rotate:
-            modes.add(state.ROTATE)
-        if space.show_gizmo_object_scale:
-            modes.add(state.RESIZE)
-
+    # The active tool wins outright: with a transform tool selected Blender
+    # ignores the Object Gizmos boxes completely, drawing only the tool's own
+    # handles. Measured -- the Scale tool with all three boxes ticked is pixel
+    # for pixel the Scale tool with none of them ticked.
     if space.show_gizmo_tool:
         idname = current_tool(context)
         if idname == "builtin.move":
-            modes.add(state.TRANSLATE)
-        elif idname == "builtin.rotate":
-            modes.add(state.ROTATE)
-        elif idname in {"builtin.scale", "builtin.scale_cage"}:
-            modes.add(state.RESIZE)
-        elif idname == "builtin.transform":
-            modes |= {state.TRANSLATE, state.ROTATE, state.RESIZE}
+            return {state.TRANSLATE}
+        if idname == "builtin.rotate":
+            return {state.ROTATE}
+        if idname in {"builtin.scale", "builtin.scale_cage"}:
+            return {state.RESIZE}
+        if idname == "builtin.transform":
+            return {state.TRANSLATE, state.ROTATE, state.RESIZE}
+
+    # Nothing from the tool, so the Object Gizmos boxes are what Blender goes
+    # on -- and it draws those from VIEW3D_GGT_xform_gizmo_context, which is
+    # flagged PERSISTENT and cannot be unlinked from Python. Drawing our own
+    # set here too is what put two gizmos on screen, so that case is left to
+    # Blender: its stock gizmo, without the highlight.
     return modes
 
 
@@ -360,6 +360,11 @@ def crowded_out(kind, role, modes):
         return state.ROTATE in modes
     if role == 'centre':
         return kind == state.RESIZE and state.TRANSLATE in modes
+    if role == 'uniform':
+        # Blender only gives uniform scale its own ring when scale is the whole
+        # gizmo. Alongside rotate the view dial already sits at that radius, and
+        # alongside move it is dropped, so this follows.
+        return modes != {state.RESIZE}
     return False
 
 
@@ -442,6 +447,10 @@ class MGB_GGT_transform(GizmoGroup):
             gz = self.gizmos.new("GIZMO_GT_move_3d")
             gz.draw_style = 'RING_2D'
             self._add(gz, (kind, 'centre', 0), operator, None)
+
+        # Uniform scale rides on a thin outer ring, the way Blender draws it.
+        gz = self.gizmos.new("GIZMO_GT_dial_3d")
+        self._add(gz, (state.RESIZE, 'uniform', 0), "transform.resize", None)
 
         for index in range(3):
             gz = self.gizmos.new("GIZMO_GT_dial_3d")
@@ -564,7 +573,7 @@ class MGB_GGT_transform(GizmoGroup):
                 gz.scale_basis = DIAL_SCALE
                 gz.line_width = DIAL_LINE_WIDTH * ui_scale
                 base = colors[index]
-            elif role == 'view':
+            elif role in {'view', 'uniform'}:
                 gz.matrix_basis = translation @ view_rotation
                 gz.scale_basis = VIEW_DIAL_SCALE
                 gz.line_width = VIEW_RING_LINE_WIDTH * ui_scale
