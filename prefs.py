@@ -5,7 +5,6 @@ import bpy
 from bpy.props import (
     BoolProperty,
     EnumProperty,
-    FloatProperty,
     FloatVectorProperty,
     StringProperty,
 )
@@ -33,10 +32,10 @@ def _keymap_update(self, context):
     keymaps.reapply()
 
 
-def _gizmo_update(self, context):
-    """Swap between our recolourable gizmo and Blender's stock one."""
-    from . import gizmo
-    gizmo.set_enabled(self.show_highlight)
+def _highlight_update(self, context):
+    """Tint the last used axis in the theme, or put the theme back."""
+    from . import highlight
+    highlight.refresh(context)
 
 
 class MayaGizmoPreferences(AddonPreferences):
@@ -125,28 +124,22 @@ class MayaGizmoPreferences(AddonPreferences):
     show_highlight: BoolProperty(
         name="Highlight Last Used Axis",
         description=(
-            "Draw the last used transform handle in yellow. This replaces "
-            "Blender's transform gizmo with an equivalent one that can be "
-            "recoloured; turning it off restores the stock gizmo"
+            "Colour the last used axis of Blender's transform gizmo. The axis "
+            "colour comes from the theme, which also colours that axis' floor "
+            "line and its ball on the navigation gizmo, so those follow along"
         ),
         default=True,
-        update=_gizmo_update,
+        update=_highlight_update,
     )
     highlight_color: FloatVectorProperty(
         name="Color",
-        description="Colour of the last used handle",
+        description="Colour of the last used axis",
         subtype='COLOR',
         size=3,
         min=0.0,
         max=1.0,
         default=(1.0, 0.85, 0.1),
-    )
-    highlight_alpha: FloatProperty(
-        name="Opacity",
-        description="Opacity of the last used handle",
-        min=0.0,
-        max=1.0,
-        default=1.0,
+        update=_highlight_update,
     )
 
     # -- Internal --------------------------------------------------------------
@@ -155,6 +148,11 @@ class MayaGizmoPreferences(AddonPreferences):
     #: Stored in preferences (rather than in memory) so a reset still works
     #: after a crash or an unclean shutdown.
     keymap_backup: StringProperty(default="", options={'HIDDEN'})
+
+    #: The theme's own axis colours, recorded while a highlight replaces one of
+    #: them. Stored for the same reason: a crash mid-highlight would otherwise
+    #: leave a yellow axis behind with nothing left to say what it had been.
+    theme_backup: StringProperty(default="", options={'HIDDEN'})
 
     def draw(self, context):
         from . import keymaps
@@ -199,9 +197,12 @@ class MayaGizmoPreferences(AddonPreferences):
         col.prop(self, "show_highlight")
         sub = col.column()
         sub.enabled = self.show_highlight
-        row = sub.row(align=True)
-        row.prop(self, "highlight_color", text="")
-        row.prop(self, "highlight_alpha", text="Opacity", slider=True)
+        sub.prop(self, "highlight_color", text="Color")
+        sub.label(
+            text="The axis colour is shared with that axis' floor line and "
+                 "the navigation gizmo, so those turn yellow too.",
+            icon='INFO',
+        )
 
         box = layout.box()
         box.label(text="Reset", icon='LOOP_BACK')

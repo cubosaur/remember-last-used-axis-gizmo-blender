@@ -128,8 +128,7 @@ them, so it asks for confirmation first.
 
 ### Last used axis
 
-**Highlight Last Used Axis** (on), plus the colour and opacity of the
-highlighted handle. Turning it off restores Blender's stock transform gizmo.
+**Highlight Last Used Axis** (on), plus the colour it uses.
 
 ---
 
@@ -141,19 +140,25 @@ every finished transform lands in `wm.operators` carrying its `constraint_axis`
 and `orient_type` — the same data the F9 redo panel shows. One code path
 therefore covers gizmo drags and keyboard shortcuts equally.
 
-Recolouring one handle of Blender's own transform gizmo is not possible from
-Python, and the theme route does not work either: the gizmo takes its axis
-colours from `theme.user_interface.axis_x/y/z`, which also drive the viewport
-floor grid lines and the navigation gizmo, so turning "X" yellow turns the whole
-X grid line yellow with it.
+The gizmo itself is left completely alone — nothing is suppressed and nothing is
+drawn over it. Python cannot reach the handles Blender's gizmo is made of: a
+`Region` exposes no gizmo map, `WindowManager` offers only
+`gizmo_group_type_ensure` and `gizmo_group_type_unlink_delayed`, and
+`context.gizmo_group` is `None` anywhere outside a Python gizmo group's own
+callbacks. There is no `Gizmo` object to recolour.
 
-So the addon rebuilds the move / rotate / scale gizmos from Blender's own
-built-in gizmo *types* -- the same `arrow_3d`, `dial_3d`, `primitive_3d` and
-`move_3d` primitives the native one is made of -- and suppresses the native
-group with `gizmo_group_type_unlink_delayed`. Each handle runs the same
-`transform.*` operator the native one runs, so behaviour is unchanged; only the
-colour of the last used handle differs. Activating a tool re-links its gizmo
-group, so the suppression is re-applied whenever the tool or mode changes.
+What Python *can* write is the theme, and that is where the gizmo takes its axis
+colours from: `theme.user_interface.axis_x/y/z`. The addon swaps the entry for
+the last used axis to the highlight colour and puts it back when the axis
+changes. Because it is Blender's own gizmo drawing itself, the highlight follows
+the interface scale, the Gizmo Size preference and every gizmo behaviour exactly,
+with nothing to keep in sync.
+
+Those three theme entries also colour the viewport's floor axis lines and the
+navigation gizmo, so highlighting X turns the X floor line and the navigation
+gizmo's X ball yellow too. There is no separate theme entry for the gizmo, so
+that is the cost of not touching it. The colours being replaced are recorded in
+the addon preferences first, so a crash mid-highlight cannot strand the theme.
 
 The middle mouse binding starts a genuine `transform.translate` / `rotate` /
 `resize` with `release_confirm` set, which is why it feels identical to dragging
@@ -161,20 +166,18 @@ the handle rather than like a scripted nudge.
 
 ### Known limitations
 
-- The gizmo is a **rebuild**, not the native one, so it is very close but not
-  pixel-identical: handle shapes and shading differ slightly, and the extras the
-  native gizmo grew over the years (depth-sorted handle occlusion, the exact
-  plane-handle flipping) are not reproduced. Turn the highlight off in
-  preferences to get the stock gizmo back at any time.
-- For the **Normal** and **Gimbal** orientations the handles are placed using
-  the object's own axes, which is exact in Object Mode but only an approximation
-  in Edit Mode. The transform itself is always correct — only the drawing
-  approximates.
-- The gizmo pivot is computed properly for Object Mode, Edit Mode (mesh) and
-  Pose Mode. Other edit modes fall back to the object origin.
-
-Edit Mode and snapping both work: the gizmo follows the selected geometry, and
-scene snapping applies to handle drags and to the middle mouse drag alike.
+- The highlight colour is **shared**. `theme.user_interface.axis_x/y/z` colours
+  the gizmo axis, that axis' floor line and its ball on the navigation gizmo, so
+  all three turn yellow together. Blender has no separate theme entry for the
+  gizmo. Turn the highlight off in preferences if you would rather not have it.
+- A **plane** handle constrains two axes, so both of those axes light up rather
+  than the plane handle itself — Blender colours a plane handle by the axis it is
+  perpendicular to, which is the one axis the transform did not use.
+- **Screen-space** moves, **uniform** scales and **view-axis** rotations
+  constrain no axis, so there is nothing to highlight. The sidebar still names
+  them.
+- The highlight is a preference change, so it applies to **every** 3D viewport
+  and persists for the session, not just the viewport you transformed in.
 - On the **right-click-select** keymap the RMB-drag orbit is skipped
   automatically, since right mouse already selects there. Everything else works.
 - In **sculpt and paint modes** right mouse is bound to brush stencil controls,

@@ -3,6 +3,45 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-12
+
+### Changed
+
+- **The last used axis is now highlighted by recolouring that axis in the
+  theme, and Blender's own gizmo is left completely alone.** Since 1.2.0 the
+  addon suppressed the native transform gizmo and drew a replacement built from
+  Blender's gizmo primitives, which is what every visual difference since then
+  came down to: handle shapes, arrow lengths, a missing uniform-scale ring, the
+  zoom-independent sizing, and the doubled gizmos. None of that can happen now,
+  because nothing is suppressed and nothing is drawn.
+- Python cannot reach the handles Blender's gizmo is made of -- a `Region`
+  exposes no gizmo map, `WindowManager` offers only `gizmo_group_type_ensure`
+  and `gizmo_group_type_unlink_delayed`, and `context.gizmo_group` is `None`
+  outside a Python gizmo group's own callbacks. The theme is the one colour
+  source Python can write, so the entry for the last used axis is swapped for
+  the highlight colour and put back when the axis changes.
+- The highlight now follows the interface scale, the Gizmo Size preference and
+  every gizmo behaviour exactly, because Blender is the one drawing it.
+
+### Removed
+
+- The **Opacity** preference. Theme colours have no alpha.
+
+### Known issues
+
+- `theme.user_interface.axis_x/y/z` also colours that axis' viewport floor line
+  and its ball on the navigation gizmo, so those turn yellow along with the
+  gizmo handle. Blender has no separate theme entry for the gizmo's axes, so
+  there is no way to narrow it.
+- A plane handle is coloured by the axis it is perpendicular to, so a two-axis
+  transform lights up the two axes it used rather than the plane handle itself.
+
+### Verified
+
+- A last used X lands `axis_x` on the highlight colour with `axis_y` and
+  `axis_z` untouched, and switching the highlight off, and disabling the addon,
+  each put the exact original colours back and clear the recorded backup.
+
 ## [1.2.7] - 2026-08-12
 
 ### Fixed
@@ -250,6 +289,7 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.3.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.3.0
 [1.2.7]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.7
 [1.2.6]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.6
 [1.2.5]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.5
