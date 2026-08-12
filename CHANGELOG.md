@@ -3,6 +3,23 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2026-08-12
+
+### Fixed
+
+- The sidebar's **Last Used Axis** did not update until something else happened
+  to redraw that region, which in practice meant the next right mouse drag -- so
+  it showed the axis before the one you had just used. The panel reads Python
+  state that Blender has no way to know changed, so finishing a transform
+  redrew the viewport and left the panel alone. It is now redrawn as soon as
+  the tracked axis changes.
+
+### Verified
+
+- The change test covers a first transform, repeats of it, and a change of
+  axis, of orientation and of transform kind: only the four real changes report
+  one, so the panel is never redrawn on a frame where nothing moved.
+
 ## [1.5.1] - 2026-08-12
 
 ### Fixed
@@ -381,6 +398,7 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.5.2]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.2
 [1.5.1]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.1
 [1.5.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.0
 [1.4.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.4.0

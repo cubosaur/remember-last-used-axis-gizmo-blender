@@ -114,9 +114,13 @@ LAST = LastAxis()
 def capture():
     """Refresh :data:`LAST` from the most recently registered operator.
 
-    Returns ``True`` when the last operator was a transform (and the state was
-    therefore updated). Cheap enough to call on every viewport redraw: it reads
-    at most four RNA properties off an operator that already exists.
+    Returns ``True`` only when the tracked axis actually *changed*, which is
+    what tells the sidebar it needs redrawing. Returning "the last operator was
+    a transform" instead would be true on every redraw for as long as it stays
+    the last operator, and redrawing on that would never stop.
+
+    Cheap enough to call on every viewport redraw: it reads at most four RNA
+    properties off an operator that already exists.
     """
     try:
         operators = bpy.context.window_manager.operators
@@ -137,11 +141,32 @@ def capture():
     except Exception:
         axis = ()
 
+    return remember(
+        kind,
+        axis if len(axis) == 3 else (False, False, False),
+        _safe_enum(props, "orient_type", 'GLOBAL'),
+        _safe_enum(props, "orient_axis", LAST.orient_axis),
+    )
+
+
+def remember(kind, constraint, orient_type, orient_axis):
+    """Store the tracked axis, returning ``True`` if it differs from before.
+
+    Split out from :func:`capture` so the comparison can be exercised directly:
+    operators invoked from Python are never added to ``wm.operators``, so the
+    reading half cannot be driven by a script at all.
+    """
+    changed = (
+        LAST.kind != kind
+        or LAST.constraint_axis != constraint
+        or LAST.orient_type != orient_type
+        or LAST.orient_axis != orient_axis
+    )
     LAST.kind = kind
-    LAST.constraint_axis = axis if len(axis) == 3 else (False, False, False)
-    LAST.orient_type = _safe_enum(props, "orient_type", 'GLOBAL')
-    LAST.orient_axis = _safe_enum(props, "orient_axis", LAST.orient_axis)
-    return True
+    LAST.constraint_axis = constraint
+    LAST.orient_type = orient_type
+    LAST.orient_axis = orient_axis
+    return changed
 
 
 def _safe_enum(props, name, fallback):
@@ -158,8 +183,29 @@ def _safe_enum(props, name, fallback):
 _handle = None
 
 
+def _tag_sidebar():
+    """Redraw the sidebar panel, the only place the tracked axis is shown.
+
+    The panel reads Python state that Blender knows nothing about, so finishing
+    a transform redraws the viewport without ever refreshing the panel -- the
+    text would sit stale until something else happened to redraw that region.
+
+    Only the ``UI`` regions are tagged. Tagging the ``WINDOW`` region from
+    inside its own draw callback would schedule another redraw of the region
+    currently drawing.
+    """
+    for window in getattr(bpy.context.window_manager, "windows", ()):
+        for area in window.screen.areas:
+            if area.type != 'VIEW_3D':
+                continue
+            for region in area.regions:
+                if region.type == 'UI':
+                    region.tag_redraw()
+
+
 def _on_redraw():
-    capture()
+    if capture():
+        _tag_sidebar()
 
 
 def register():
