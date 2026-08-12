@@ -3,6 +3,25 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.4] - 2026-08-12
+
+### Fixed
+
+- The gizmo grew as you zoomed in and shrank as you zoomed out instead of
+  holding a constant size on screen, which is what Blender's own transform
+  gizmo does. The gizmo group carried the ``SCALE`` option, which despite the
+  name means "scale to respect zoom" -- it anchors the gizmo to world size.
+  With it on the handles measured 144px zoomed out and 422px zoomed in, against
+  a steady 154px for the native gizmo. Handle sizes are recalibrated for the
+  scaling that applies without it.
+
+### Verified
+
+- **Zoom**: every handle holds its size to within a rounding error in
+  perspective at view distances of 3, 12 and 48, and in orthographic at 2, 10
+  and 60, measured in screen pixels from each handle's final matrix. The plane
+  handles hold their offset from the pivot too.
+
 ## [1.2.3] - 2026-08-11
 
 ### Fixed
@@ -131,6 +150,7 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.2.4]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.4
 [1.2.3]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.3
 [1.2.2]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.2
 [1.2.1]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.1

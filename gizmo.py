@@ -36,11 +36,11 @@ _suppressed_for = None
 #: Handle sizes, in gizmo units. Measured against the native gizmo on screen:
 #: each primitive type has its own scale convention, so these are calibrated
 #: rather than derived.
-AXIS_SCALE = 0.58
-PLANE_SCALE = 0.028
-CENTRE_SCALE = 0.09
-DIAL_SCALE = 0.44
-VIEW_DIAL_SCALE = 0.60
+AXIS_SCALE = 1.21
+PLANE_SCALE = 0.059
+CENTRE_SCALE = 0.187
+DIAL_SCALE = 0.92
+VIEW_DIAL_SCALE = 1.25
 
 #: How far out the plane handles sit, as a fraction of the axis length.
 PLANE_OFFSET_FRACTION = 0.4
@@ -328,9 +328,13 @@ class MGB_GGT_transform(GizmoGroup):
     bl_label = "Transform (Last Used Axis)"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'WINDOW'
-    # SCALE keeps handles a constant size on screen, as the native gizmo does.
+    # No 'SCALE': despite the name it means "scale to respect zoom", anchoring
+    # the gizmo to world size so it grows as you zoom in. Leaving it off gives
+    # the zoom-independent screen size the native transform gizmo has -- with it
+    # on, the handles measured 144px zoomed out and 422px zoomed in, against a
+    # steady 154px for the native one.
     # EXCLUDE_MODAL hides the whole set while one handle is being dragged.
-    bl_options = {'3D', 'PERSISTENT', 'SCALE', 'EXCLUDE_MODAL'}
+    bl_options = {'3D', 'PERSISTENT', 'EXCLUDE_MODAL'}
 
     @classmethod
     def poll(cls, context):
@@ -581,6 +585,12 @@ def _on_tool_activated(*_args):
     changed.
     """
     global _suppressed_for
+    p = get_prefs()
+    if p is not None and not p.show_highlight:
+        # The highlight is off, so Blender's own gizmo is the one in use and
+        # must be left alone. Suppressing it here would leave the viewport with
+        # no gizmo at all for whichever tool was activated.
+        return
     _suppressed_for = None
     _suppress_native()
 
