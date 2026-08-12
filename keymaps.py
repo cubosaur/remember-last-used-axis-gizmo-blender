@@ -260,6 +260,50 @@ def compatibility_warning(context=None):
 # Apply / revert
 # ---------------------------------------------------------------------------
 
+#: Navigation operators plain middle mouse may be bound to.
+MMB_NAV_OPERATORS = {"view3d.rotate", "view3d.move", "view3d.zoom", "view3d.dolly"}
+
+
+def repair_legacy_mmb(context=None, force=False):
+    """Switch middle mouse navigation back on if an older version disabled it.
+
+    Versions up to 1.4.x put the transform on middle mouse, which meant turning
+    Blender's own orbit entry off. That was recorded so it could be put back,
+    but :func:`revert` used to clear the record even when the restore had
+    failed, and a cleared record leaves the orbit off with nothing left to undo
+    it.
+
+    Middle mouse is never touched now, so an inactive plain middle mouse
+    navigation entry can only be one of ours to give back. Done once unless
+    ``force`` is set, so that a user who switches it off themselves is not
+    overruled every time the addon loads.
+    """
+    ctx = context or bpy.context
+    p = get_prefs(ctx)
+    if p is None or (p.legacy_mmb_repaired and not force):
+        return 0
+    try:
+        kc_user = ctx.window_manager.keyconfigs.user
+    except AttributeError:
+        return 0
+    if kc_user is None:
+        return 0
+
+    repaired = 0
+    for km in kc_user.keymaps:
+        for kmi in km.keymap_items:
+            if (
+                kmi.type == 'MIDDLEMOUSE'
+                and kmi.idname in MMB_NAV_OPERATORS
+                and _unmodified(kmi)
+                and not kmi.active
+            ):
+                kmi.active = True
+                repaired += 1
+    p.legacy_mmb_repaired = True
+    return repaired
+
+
 def _enabled(p, kc_user):
     """Whether the right-mouse-drag transform can be installed at all."""
     return p.enable_rmb_transform and not _uses_right_mouse_select(kc_user)
@@ -322,7 +366,10 @@ def apply(context=None):
     if kc_user.keymaps.get("3D View") is None:
         return False
 
-    _store_backup(_apply_user_keyconfig_edits(p, kc_user))
+    repair_legacy_mmb(ctx)
+    # Anything revert() could not resolve is still on record, so add to it
+    # rather than replacing it.
+    _store_backup(_load_backup() + _apply_user_keyconfig_edits(p, kc_user))
     _defer(_apply_addon_items_stage)
     return True
 
@@ -363,6 +410,7 @@ def revert(context=None, clear_backup=True):
         kc_user = None
 
     restored = 0
+    unresolved = []
     if kc_user is not None:
         # Reverse order so that overlapping edits unwind cleanly.
         for entry in reversed(_load_backup()):
@@ -371,15 +419,20 @@ def revert(context=None, clear_backup=True):
                 continue
             kmi = _find_item(kc_user, entry, entry.get("new") if field == "value" else None)
             if kmi is None:
+                unresolved.append(entry)
                 continue
             try:
                 setattr(kmi, field, entry["old"])
                 restored += 1
             except Exception:
-                pass
+                unresolved.append(entry)
 
     if clear_backup:
-        _store_backup([])
+        # Only forget what was actually put back. Clearing the record after a
+        # failed lookup strands that change for good, with nothing left to say
+        # what it had been -- which is how a disabled middle mouse orbit once
+        # became permanent.
+        _store_backup(list(reversed(unresolved)))
     _applied = False
     return restored
 

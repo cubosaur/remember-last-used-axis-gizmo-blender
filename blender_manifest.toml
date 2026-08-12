@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "maya_gizmo"
-version = "1.5.0"
+version = "1.5.1"
 name = "Maya Gizmo"
 tagline = "Transform along the last used gizmo axis with an RMB drag"
 maintainer = "Angelo Tsiflas (cubosaur)"

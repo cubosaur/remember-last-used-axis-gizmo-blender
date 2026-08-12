@@ -121,11 +121,19 @@ class MGB_OT_reset_keymap(Operator):
         from . import keymaps
 
         restored = keymaps.revert(context, clear_backup=True)
-        self.report(
-            {'INFO'},
-            "Hotkeys reset -- right click menus restored "
-            "(%d entr%s)" % (restored, "y" if restored == 1 else "ies"),
-        )
+        # Forced: pressing this button is an explicit ask to be given the
+        # default navigation back, whether or not the one-off repair already ran.
+        repaired = keymaps.repair_legacy_mmb(context, force=True)
+
+        if not restored and not repaired:
+            self.report({'INFO'}, "Nothing to reset -- no keymap changes on record")
+        else:
+            parts = []
+            if restored:
+                parts.append("%d entr%s restored" % (restored, "y" if restored == 1 else "ies"))
+            if repaired:
+                parts.append("middle mouse navigation re-enabled")
+            self.report({'INFO'}, "Hotkeys reset -- " + ", ".join(parts))
         return {'FINISHED'}
 
 

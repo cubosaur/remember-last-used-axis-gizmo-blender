@@ -3,6 +3,30 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-08-12
+
+### Fixed
+
+- **Blender's middle mouse orbit could be left switched off for good.**
+  `revert()` cleared the backup record unconditionally, including when it had
+  failed to find the entry it was meant to restore, so that change was stranded
+  with nothing left to say what it had been. Versions up to 1.4.x switched the
+  orbit entry off to take middle mouse for the transform, and once the record
+  was gone no later version could put it back -- reverting, resetting and
+  upgrading all had nothing to work from. The record now keeps whatever it
+  could not restore, and a one-off repair switches plain middle mouse
+  navigation back on regardless: middle mouse is never touched now, so an
+  inactive entry there can only be one this addon left behind.
+- **Reset Hotkeys appeared to do nothing** when the record was empty, reporting
+  success either way. It now forces the middle mouse repair as well, and says
+  plainly when there was nothing on record.
+
+### Verified
+
+- Starting on this version from a config with the middle mouse orbit disabled
+  and the backup emptied -- the state the bug left behind -- brings the orbit
+  back, with the only added binding still RIGHTMOUSE / CLICK_DRAG.
+
 ## [1.5.0] - 2026-08-12
 
 ### Changed
@@ -357,6 +381,7 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.5.1]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.1
 [1.5.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.0
 [1.4.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.4.0
 [1.3.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.3.0

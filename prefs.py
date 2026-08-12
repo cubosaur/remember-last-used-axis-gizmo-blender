@@ -118,6 +118,11 @@ class MayaGizmoPreferences(AddonPreferences):
     #: :func:`repair_theme` can put a leftover tint back; nothing writes it now.
     theme_backup: StringProperty(default="", options={'HIDDEN'})
 
+    #: Whether the one-off middle mouse repair has run. Versions up to 1.4.x
+    #: disabled Blender's middle mouse orbit, and a lost backup record left it
+    #: that way for good; see :func:`keymaps.repair_legacy_mmb`.
+    legacy_mmb_repaired: BoolProperty(default=False, options={'HIDDEN'})
+
     def draw(self, context):
         from . import keymaps
 
