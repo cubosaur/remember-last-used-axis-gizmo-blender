@@ -3,6 +3,40 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.6] - 2026-08-12
+
+### Fixed
+
+- Hammering the transform tool shortcuts could leave two transform gizmos on
+  screen at once, Blender's and this one, and once it happened they stayed
+  until the tool or the mode next changed. The suppression was cached on
+  (mode, tool) and re-applied only when that pair changed, so a re-link that
+  changed neither -- which is exactly what re-activating the tool you are
+  already on does -- was invisible to it. It is re-asserted on every poll now
+  rather than cached: `gizmo_group_type_unlink_delayed` measures 0.6us per
+  call, so there was nothing to save by tracking it.
+- The Object Gizmos boxes (Move / Rotate / Scale) were honoured even with
+  **Active Object** switched off above them in the same popover, so this addon
+  drew a gizmo where Blender draws none.
+
+### Verified
+
+- Re-linking the native group directly, with the mode and tool left alone,
+  reproduces the double gizmo on the old code and it then survives every
+  later redraw. On the new code the very next redraw is already clean.
+- With **Active Object** off and Move ticked, neither gizmo draws a single
+  pixel, matching Blender. The Move, Rotate, Scale and Transform tools are
+  pixel for pixel unchanged.
+
+### Known issues
+
+- Ticking an Object Gizmos box while **Active Object** is on still shows
+  Blender's own transform gizmo alongside this one. Those boxes are served by
+  `VIEW3D_GGT_xform_gizmo_context`, which carries the `PERSISTENT` option;
+  `gizmo_group_type_unlink_delayed` refuses to unlink such a group, so it
+  cannot be suppressed from Python at all. Switching **Active Object** off
+  hides both, and the transform tools are unaffected either way.
+
 ## [1.2.5] - 2026-08-12
 
 ### Fixed
@@ -185,6 +219,7 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.2.6]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.6
 [1.2.5]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.5
 [1.2.4]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.4
 [1.2.3]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.3

@@ -27,11 +27,14 @@ from .operators import has_transform_target
 from .prefs import get_prefs
 
 #: The native transform gizmo group, suppressed while this addon is enabled.
+#: Blender re-links it behind our back -- on tool activation, on file load --
+#: with nothing to say it has happened and no way to ask whether it is linked,
+#: so ``poll`` re-asserts the suppression on every redraw rather than tracking
+#: it. There is a second group, ``VIEW3D_GGT_xform_gizmo_context``, behind the
+#: viewport's Object Gizmos checkboxes; it is flagged ``PERSISTENT`` and
+#: ``gizmo_group_type_unlink_delayed`` refuses to unlink it, so that one cannot
+#: be suppressed from Python at all.
 NATIVE_GIZMO_GROUP = "VIEW3D_GGT_xform_gizmo"
-
-#: (mode, tool) the native gizmo was last suppressed for. Blender re-links the
-#: group whenever a tool is activated, so this has to be redone on each change.
-_suppressed_for = None
 
 #: Handle sizes, in gizmo units. Measured against the native gizmo on screen:
 #: each primitive type has its own scale convention, so these are calibrated
@@ -255,21 +258,18 @@ def active_modes(context):
     if space is None or not space.show_gizmo:
         return modes
 
-    if space.show_gizmo_object_translate:
-        modes.add(state.TRANSLATE)
-    if space.show_gizmo_object_rotate:
-        modes.add(state.ROTATE)
-    if space.show_gizmo_object_scale:
-        modes.add(state.RESIZE)
+    # The Object Gizmos boxes only take effect under "Active Object": with that
+    # off Blender draws nothing for them, so neither should we.
+    if space.show_gizmo_context:
+        if space.show_gizmo_object_translate:
+            modes.add(state.TRANSLATE)
+        if space.show_gizmo_object_rotate:
+            modes.add(state.ROTATE)
+        if space.show_gizmo_object_scale:
+            modes.add(state.RESIZE)
 
     if space.show_gizmo_tool:
-        try:
-            tool = context.workspace.tools.from_space_view3d_mode(
-                context.mode, create=False
-            )
-        except Exception:
-            tool = None
-        idname = getattr(tool, "idname", None)
+        idname = current_tool(context)
         if idname == "builtin.move":
             modes.add(state.TRANSLATE)
         elif idname == "builtin.rotate":
@@ -382,22 +382,25 @@ class MGB_GGT_transform(GizmoGroup):
 
     @classmethod
     def poll(cls, context):
-        # Activating a tool re-links its gizmo group, so the native transform
-        # gizmo comes back every time the tool or mode changes and has to be
-        # suppressed again. Keyed so this costs one comparison per poll.
         p = get_prefs(context)
         if p is None or not p.show_highlight:
+            # Blender's own gizmo is the one in use, so leave it alone.
             return False
-
-        global _suppressed_for
-        stamp = (context.mode, current_tool(context))
-        if stamp != _suppressed_for:
-            _suppressed_for = stamp
-            _suppress_native()
 
         space = context.space_data
         if space is None or space.type != 'VIEW_3D':
             return False
+
+        # Blender re-links the native group behind our back: activating a tool
+        # does it even when that tool is already active, and hammering the tool
+        # shortcuts can land the re-link after our unlink. Nothing reports when
+        # that has happened and there is no way to ask whether the group is
+        # linked, so the suppression is re-asserted here rather than cached on
+        # (mode, tool) -- a re-link that changes neither would otherwise leave
+        # two transform gizmos on screen until the tool or mode next changed.
+        # Measured at 0.6us per call, against a doubled gizmo that never healed.
+        _suppress_native()
+
         if not active_modes(context):
             return False
         return has_transform_target(context)
@@ -623,19 +626,17 @@ def _on_tool_activated(*_args):
     """Re-suppress the native gizmo whenever a tool is activated.
 
     Activating a tool re-links its gizmo group even when it is *already* the
-    active tool, so pressing the same tool shortcut twice would otherwise bring
-    Blender's transform gizmo back alongside ours -- two gizmos at once. Keying
-    the suppression on (mode, tool) alone cannot see that, because neither
-    changed.
+    active tool, so pressing the same tool shortcut twice brings Blender's
+    transform gizmo back alongside ours. ``poll`` puts the suppression back on
+    the next redraw regardless; doing it here as well means the second gizmo
+    never gets a frame to appear in.
     """
-    global _suppressed_for
     p = get_prefs()
     if p is not None and not p.show_highlight:
         # The highlight is off, so Blender's own gizmo is the one in use and
         # must be left alone. Suppressing it here would leave the viewport with
         # no gizmo at all for whichever tool was activated.
         return
-    _suppressed_for = None
     _suppress_native()
 
 
@@ -667,10 +668,8 @@ def set_enabled(enabled):
     simply hiding ours, otherwise the viewport would be left with no transform
     gizmo at all.
     """
-    global _suppressed_for
     if bpy.app.background:
         return
-    _suppressed_for = None
     if enabled:
         _suppress_native()
     else:
@@ -679,18 +678,15 @@ def set_enabled(enabled):
 
 @bpy.app.handlers.persistent
 def _on_load(_dummy):
-    # Loading a file rebuilds the tools, which re-links the native group.
-    global _suppressed_for
-    _suppressed_for = None
+    # Loading a file rebuilds the tools, which re-links the native group, and
+    # drops the subscriptions along with the old window manager.
     _subscribe_tool_changes()
 
 
 def register():
-    global _suppressed_for
     bpy.utils.register_class(MGB_GGT_transform)
     if bpy.app.background:
         return
-    _suppressed_for = None
     _suppress_native()
     _subscribe_tool_changes()
     if _on_load not in bpy.app.handlers.load_post:
@@ -698,7 +694,6 @@ def register():
 
 
 def unregister():
-    global _suppressed_for
     _unsubscribe_tool_changes()
     if _on_load in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(_on_load)
@@ -706,5 +701,4 @@ def unregister():
     # leave the viewport without a transform gizmo at all.
     if not bpy.app.background:
         _restore_native()
-    _suppressed_for = None
     bpy.utils.unregister_class(MGB_GGT_transform)
