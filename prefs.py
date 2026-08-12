@@ -41,7 +41,7 @@ def repair_theme():
     """Put back an axis colour left tinted by 1.3.0.
 
     That version highlighted the last used axis by recolouring it in the theme,
-    recording the colour it replaced in :attr:`MayaGizmoPreferences.theme_backup`
+    recording the colour it replaced in :attr:`RememberLastUsedAxisPreferences.theme_backup`
     first. The highlight is gone, so anything still recorded is a tint nothing
     else is going to undo -- an upgrade that skipped the old version's clean
     shutdown, or a crash while a highlight was applied.
@@ -67,7 +67,7 @@ def repair_theme():
     return None
 
 
-class MayaGizmoPreferences(AddonPreferences):
+class RememberLastUsedAxisPreferences(AddonPreferences):
     bl_idname = ADDON_ID
 
     # -- Right mouse transform -------------------------------------------------
@@ -167,12 +167,12 @@ class MayaGizmoPreferences(AddonPreferences):
         )
         row = col.row()
         row.scale_y = 1.4
-        row.operator("mgb.reset_keymap", icon='LOOP_BACK')
-        col.operator("mgb.restore_blender_defaults", icon='TRASH')
+        row.operator("rla.reset_keymap", icon='LOOP_BACK')
+        col.operator("rla.restore_blender_defaults", icon='TRASH')
 
 
 def register():
-    bpy.utils.register_class(MayaGizmoPreferences)
+    bpy.utils.register_class(RememberLastUsedAxisPreferences)
     if bpy.app.background:
         return
     # Deferred by a tick: the addon preferences are not reachable until Blender
@@ -183,4 +183,4 @@ def register():
 def unregister():
     if bpy.app.timers.is_registered(repair_theme):
         bpy.app.timers.unregister(repair_theme)
-    bpy.utils.unregister_class(MayaGizmoPreferences)
+    bpy.utils.unregister_class(RememberLastUsedAxisPreferences)

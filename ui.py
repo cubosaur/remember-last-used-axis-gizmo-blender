@@ -8,8 +8,8 @@ from . import state
 from .prefs import get_prefs
 
 
-class MGB_PT_sidebar(Panel):
-    bl_label = "Maya Gizmo"
+class RLA_PT_sidebar(Panel):
+    bl_label = "Remember Last Used Axis"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "View"
@@ -26,7 +26,7 @@ class MGB_PT_sidebar(Panel):
         row.label(text=state.LAST.describe(), icon='EMPTY_ARROWS')
         row = box.row()
         row.enabled = state.LAST.valid
-        row.operator("mgb.clear_last_axis", text="Clear", icon='X')
+        row.operator("rla.clear_last_axis", text="Clear", icon='X')
 
         if p is None:
             return
@@ -34,12 +34,12 @@ class MGB_PT_sidebar(Panel):
         col = layout.column(align=True)
         col.prop(p, "enable_rmb_transform", text="RMB Transform")
 
-        layout.operator("mgb.reset_keymap", icon='LOOP_BACK')
+        layout.operator("rla.reset_keymap", icon='LOOP_BACK')
 
 
 def register():
-    bpy.utils.register_class(MGB_PT_sidebar)
+    bpy.utils.register_class(RLA_PT_sidebar)
 
 
 def unregister():
-    bpy.utils.unregister_class(MGB_PT_sidebar)
+    bpy.utils.unregister_class(RLA_PT_sidebar)

@@ -3,6 +3,27 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-08-12
+
+### Changed
+
+- **Renamed to Remember Last Used Axis.** The old name was doing two things
+  wrong: it named a gizmo this addon no longer draws, and it borrowed the name
+  of the application whose workflow it imitates rather than describing what it
+  does.
+- The extension id changes with it, from `maya_gizmo` to
+  `remember_last_used_axis`, which means **Blender installs this as a new
+  add-on rather than an update**. Disable and remove the old *Maya Gizmo*
+  first: doing it in that order lets it revert its keymap changes on the way
+  out. Preferences do not carry across the id change, and the defaults are the
+  same as they were.
+- Operator ids follow, `mgb.*` becoming `rla.*`. Those live only in the keymap
+  the addon installs for itself, which is rebuilt from scratch on every enable,
+  so there is nothing to migrate.
+- The repository is now `remember-last-used-axis-gizmo-blender`. GitHub
+  redirects the old address, so existing clones and the 1.5.3 release keep
+  working.
+
 ## [1.5.3] - 2026-08-12
 
 ### Fixed
@@ -105,7 +126,7 @@ All notable changes to this project are documented here. This project follows
 
 - After upgrading from a config with the middle mouse orbit disabled, the orbit
   entry is active again, the only binding the addon adds is
-  `mgb.transform_last_axis` on RIGHTMOUSE / CLICK_DRAG, nothing at all sits on
+  `rla.transform_last_axis` on RIGHTMOUSE / CLICK_DRAG, nothing at all sits on
   middle mouse, and the viewport context menus read CLICK.
 
 ## [1.4.0] - 2026-08-12
@@ -429,19 +450,20 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
-[1.5.3]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.3
-[1.5.2]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.2
-[1.5.1]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.1
-[1.5.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.0
-[1.4.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.4.0
-[1.3.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.3.0
-[1.2.7]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.7
-[1.2.6]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.6
-[1.2.5]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.5
-[1.2.4]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.4
-[1.2.3]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.3
-[1.2.2]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.2
-[1.2.1]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.1
-[1.2.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.0
-[1.1.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.1.0
-[1.0.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.0.0
+[1.6.0]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.6.0
+[1.5.3]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.5.3
+[1.5.2]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.5.2
+[1.5.1]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.5.1
+[1.5.0]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.5.0
+[1.4.0]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.4.0
+[1.3.0]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.3.0
+[1.2.7]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.2.7
+[1.2.6]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.2.6
+[1.2.5]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.2.5
+[1.2.4]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.2.4
+[1.2.3]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.2.3
+[1.2.2]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.2.2
+[1.2.1]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.2.1
+[1.2.0]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.2.0
+[1.1.0]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.1.0
+[1.0.0]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.0.0

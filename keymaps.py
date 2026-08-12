@@ -9,7 +9,7 @@ Two different kinds of change are made, and they are undone differently:
 2. **Edits to existing entries** (retiming the viewport context menus from press
    to click) have to happen in ``wm.keyconfigs.user``, which persists in the
    user preferences. Every one of those is recorded in
-   :attr:`prefs.MayaGizmoPreferences.keymap_backup` as JSON *before* it is
+   :attr:`prefs.RememberLastUsedAxisPreferences.keymap_backup` as JSON *before* it is
    changed, so it can be restored exactly -- including after a crash, since the
    record lives in the preferences rather than in memory.
 
@@ -333,7 +333,7 @@ def _add_addon_items(p, kc_addon, kc_user):
     # CLICK_DRAG rather than PRESS: press belongs to the context menu, and only
     # a drag can be told apart from the click that opens it.
     kmi = km.keymap_items.new(
-        "mgb.transform_last_axis", 'RIGHTMOUSE', 'CLICK_DRAG'
+        "rla.transform_last_axis", 'RIGHTMOUSE', 'CLICK_DRAG'
     )
     _addon_items.append((km, kmi))
     return True

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Maya Gizmo for Blender.
+"""Remember Last Used Axis.
 
 Brings Autodesk Maya's "transform along the last used gizmo axis" workflow to
 Blender's 3D viewport:

@@ -1,4 +1,4 @@
-# Maya Gizmo for Blender
+# Remember Last Used Axis
 
 Bring Autodesk Maya's *"transform along the last used axis"* workflow to
 Blender's 3D viewport.
@@ -24,7 +24,7 @@ tracked, along with the transform orientation you used.
 
 **2. The sidebar names it.**
 
-**View ▸ sidebar ▸ Maya Gizmo** spells out what a right mouse drag will do —
+**View ▸ sidebar ▸ Remember Last Used Axis** spells out what a right mouse drag will do —
 *Move X (Global)*, *Scale XY (Local)*, and so on — with a **Clear** button to
 forget it.
 
@@ -47,12 +47,12 @@ mouse *drag*, which is a separate binding from the click.
 **Requires Blender 4.2 or newer** (it is packaged as a Blender Extension).
 Developed and tested on Blender 5.1.
 
-1. Download `maya_gizmo-<version>.zip` from the
-   [Releases page](https://github.com/cubosaur/maya-gizmo-for-blender/releases/latest).
+1. Download `remember_last_used_axis-<version>.zip` from the
+   [Releases page](https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/latest).
 2. Drag the zip straight into a Blender window and confirm.
 
    *Or:* **Edit ▸ Preferences ▸ Add-ons ▸ ▾ ▸ Install from Disk…** and pick the zip.
-3. Enable **Maya Gizmo** in the add-on list if it is not enabled already.
+3. Enable **Remember Last Used Axis** in the add-on list if it is not enabled already.
 
 The keymap changes are applied as soon as the addon is enabled, and reverted as
 soon as it is disabled.
@@ -86,8 +86,8 @@ straight back to Blender.
 Two independent guarantees, because a broken viewport is not a fun surprise:
 
 - **Automatic.** Disabling or removing the addon reverts every keymap change.
-- **Manual.** **Preferences ▸ Add-ons ▸ Maya Gizmo ▸ Reset Hotkeys**, or the
-  same button in **View3D ▸ Sidebar (N) ▸ View ▸ Maya Gizmo**.
+- **Manual.** **Preferences ▸ Add-ons ▸ Remember Last Used Axis ▸ Reset Hotkeys**, or the
+  same button in **View3D ▸ Sidebar (N) ▸ View ▸ Remember Last Used Axis**.
 
 Every change is written to a backup record in the addon preferences *before* it
 is made, so a reset restores exactly what you had — including your own prior
@@ -102,7 +102,7 @@ them, so it asks for confirmation first.
 
 ## Preferences
 
-**Edit ▸ Preferences ▸ Add-ons ▸ Maya Gizmo**
+**Edit ▸ Preferences ▸ Add-ons ▸ Remember Last Used Axis**
 
 | Setting | Default | |
 |---|---|---|
@@ -151,8 +151,8 @@ the handle rather than like a scripted nudge.
 ## Development
 
 ```bash
-git clone https://github.com/cubosaur/maya-gizmo-for-blender.git
-cd maya-gizmo-for-blender
+git clone https://github.com/cubosaur/remember-last-used-axis-gizmo-blender.git
+cd remember-last-used-axis-gizmo-blender
 ```
 
 Build the installable zip — either with Blender:

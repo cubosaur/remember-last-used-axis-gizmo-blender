@@ -35,10 +35,10 @@ def has_transform_target(context):
     return context.active_object is not None
 
 
-class MGB_OT_transform_last_axis(Operator):
+class RLA_OT_transform_last_axis(Operator):
     """Transform along the last used gizmo axis, driven by the mouse drag"""
 
-    bl_idname = "mgb.transform_last_axis"
+    bl_idname = "rla.transform_last_axis"
     bl_label = "Transform Along Last Used Axis"
     # Deliberately no REGISTER/UNDO: the nested transform operator registers
     # itself, so it is the transform (not this wrapper) that appears in the redo
@@ -97,10 +97,10 @@ class MGB_OT_transform_last_axis(Operator):
         return {'FINISHED'}
 
 
-class MGB_OT_clear_last_axis(Operator):
+class RLA_OT_clear_last_axis(Operator):
     """Forget the last used axis"""
 
-    bl_idname = "mgb.clear_last_axis"
+    bl_idname = "rla.clear_last_axis"
     bl_label = "Clear Last Used Axis"
     bl_options = {'REGISTER'}
 
@@ -110,10 +110,10 @@ class MGB_OT_clear_last_axis(Operator):
         return {'FINISHED'}
 
 
-class MGB_OT_reset_keymap(Operator):
+class RLA_OT_reset_keymap(Operator):
     """Undo every keymap change this addon made and restore your previous keys"""
 
-    bl_idname = "mgb.reset_keymap"
+    bl_idname = "rla.reset_keymap"
     bl_label = "Reset Hotkeys"
     bl_options = {'REGISTER'}
 
@@ -137,10 +137,10 @@ class MGB_OT_reset_keymap(Operator):
         return {'FINISHED'}
 
 
-class MGB_OT_apply_keymap(Operator):
+class RLA_OT_apply_keymap(Operator):
     """Re-apply this addon's keymap"""
 
-    bl_idname = "mgb.apply_keymap"
+    bl_idname = "rla.apply_keymap"
     bl_label = "Apply Hotkeys"
     bl_options = {'REGISTER'}
 
@@ -154,13 +154,13 @@ class MGB_OT_apply_keymap(Operator):
         return {'CANCELLED'}
 
 
-class MGB_OT_restore_blender_defaults(Operator):
+class RLA_OT_restore_blender_defaults(Operator):
     """Reset the affected keymaps to Blender's factory defaults.
 
     This also discards your own customisations in those keymaps
     """
 
-    bl_idname = "mgb.restore_blender_defaults"
+    bl_idname = "rla.restore_blender_defaults"
     bl_label = "Restore Blender Default Keymaps"
     bl_options = {'REGISTER'}
 
@@ -182,11 +182,11 @@ def _tag_redraw(context):
 
 
 _CLASSES = (
-    MGB_OT_transform_last_axis,
-    MGB_OT_clear_last_axis,
-    MGB_OT_reset_keymap,
-    MGB_OT_apply_keymap,
-    MGB_OT_restore_blender_defaults,
+    RLA_OT_transform_last_axis,
+    RLA_OT_clear_last_axis,
+    RLA_OT_reset_keymap,
+    RLA_OT_apply_keymap,
+    RLA_OT_restore_blender_defaults,
 )
 
 

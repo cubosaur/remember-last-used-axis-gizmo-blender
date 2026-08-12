@@ -1,13 +1,13 @@
 schema_version = "1.0.0"
 
-id = "maya_gizmo"
-version = "1.5.3"
-name = "Maya Gizmo"
+id = "remember_last_used_axis"
+version = "1.6.0"
+name = "Remember Last Used Axis"
 tagline = "Transform along the last used gizmo axis with an RMB drag"
 maintainer = "Angelo Tsiflas (cubosaur)"
 type = "add-on"
 
-website = "https://github.com/cubosaur/maya-gizmo-for-blender"
+website = "https://github.com/cubosaur/remember-last-used-axis-gizmo-blender"
 
 tags = ["3D View", "User Interface"]
 
