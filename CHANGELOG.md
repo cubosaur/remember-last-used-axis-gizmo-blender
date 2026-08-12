@@ -3,6 +3,37 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.3] - 2026-08-12
+
+### Fixed
+
+- **Restore Blender Default Keymaps** could leave a keymap record behind that
+  nothing would ever resolve. 1.5.1 made `revert()` keep entries it could not
+  restore, which is right everywhere except here: this resets the affected
+  keymaps to factory, so a surviving record describes entries in a state that
+  no longer exists, and every later reset would report restoring work it had
+  not done. Discarding the record is correct once the keymaps are factory
+  fresh, and it now does.
+- The preferences panel reported the keymap as **Active** even when no binding
+  had been installed -- with the transform switched off, or on the
+  right-click-select keymap where it is skipped on purpose. It now reports what
+  actually happened.
+
+### Removed
+
+- `LastAxis.rotate_axis_index` and `LastAxis.axis_indices`, both dead since the
+  gizmo drawing went. The first picked which rotation dial to colour, and the
+  second was only ever reached through it, so removing one orphaned the other.
+  `constraint_axis` and `orient_axis` stay: the transform operator needs them.
+
+### Verified
+
+- `revert()` keeps an unresolvable record while **Restore Blender Default
+  Keymaps** clears it -- the two halves of the same rule, checked against a
+  record deliberately written so it can never be found.
+- Switching the transform off drops the binding and reports Not applied;
+  switching it back on installs it and reports Active.
+
 ## [1.5.2] - 2026-08-12
 
 ### Fixed
@@ -398,6 +429,7 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.5.3]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.3
 [1.5.2]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.2
 [1.5.1]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.1
 [1.5.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.0

@@ -326,8 +326,9 @@ def _apply_user_keyconfig_edits(p, kc_user):
 
 
 def _add_addon_items(p, kc_addon, kc_user):
+    """Install the binding, returning whether anything was actually added."""
     if not _enabled(p, kc_user):
-        return
+        return False
     km = kc_addon.keymaps.new(name="3D View", space_type='VIEW_3D')
     # CLICK_DRAG rather than PRESS: press belongs to the context menu, and only
     # a drag can be told apart from the click that opens it.
@@ -335,6 +336,7 @@ def _add_addon_items(p, kc_addon, kc_user):
         "mgb.transform_last_axis", 'RIGHTMOUSE', 'CLICK_DRAG'
     )
     _addon_items.append((km, kmi))
+    return True
 
 
 def apply(context=None):
@@ -386,8 +388,10 @@ def _apply_addon_items_stage():
         return
     if p is None or keyconfigs.addon is None or keyconfigs.user is None:
         return
-    _add_addon_items(p, keyconfigs.addon, keyconfigs.user)
-    _applied = True
+    # Only "applied" when a binding really went in. It does not on the
+    # right-click-select keymap, or with the transform switched off, and the
+    # preferences panel reports this state.
+    _applied = _add_addon_items(p, keyconfigs.addon, keyconfigs.user)
 
 
 def revert(context=None, clear_backup=True):
@@ -485,6 +489,13 @@ def restore_blender_defaults(context=None):
             count += 1
         except Exception:
             pass
+
+    # These keymaps are factory fresh now, so anything still on record describes
+    # entries that no longer exist in the state they were recorded from.
+    # Discarding it is right here, unlike in revert(): there is nothing left for
+    # it to restore, and keeping it would have every later reset report work it
+    # did not do.
+    _store_backup([])
     return count
 
 

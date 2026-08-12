@@ -52,9 +52,6 @@ LABELS = {
     TRACKBALL: "Trackball",
 }
 
-_AXIS_INDEX = {'X': 0, 'Y': 1, 'Z': 2}
-
-
 class LastAxis:
     """The most recent transform kind + axis constraint the user performed."""
 
@@ -72,21 +69,6 @@ class LastAxis:
     @property
     def valid(self):
         return self.kind is not None
-
-    @property
-    def axis_indices(self):
-        """Indices of the constrained axes, e.g. ``[0, 1]`` for the XY plane."""
-        return [i for i, enabled in enumerate(self.constraint_axis) if enabled]
-
-    @property
-    def rotate_axis_index(self):
-        """Axis index a rotation spins around, or ``None`` for view rotation."""
-        if self.orient_type == 'VIEW':
-            return None
-        indices = self.axis_indices
-        if len(indices) == 1:
-            return indices[0]
-        return _AXIS_INDEX.get(self.orient_axis)
 
     def describe(self):
         """Short human readable summary, used by the sidebar panel."""
