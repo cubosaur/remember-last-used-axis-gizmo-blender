@@ -3,6 +3,41 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2026-08-12
+
+### Fixed
+
+- With the **Transform** tool the move and scale handles were drawn in exactly
+  the same place -- same position, same size, to the pixel. The scale handles
+  were buried inside the move arrows, which of the two a click picked was
+  arbitrary, and a last used *scale* axis was indistinguishable from a last
+  used *move* axis, which defeats the point of the addon in that tool. Blender's
+  own gizmo keeps the two apart by pushing the move arrows out past the
+  rotation dials and pulling the scale handles in, and by dropping the plane
+  handles and the duplicate centre ring rather than stacking them. The same
+  layout is used now. The numbers are measured off the native gizmo, by diffing
+  screenshots of each Object Gizmo combination against a gizmo-free plate of
+  the same view: along Z, the least foreshortened axis, the move arrow tip runs
+  136px on its own and 185px once the dials are there, and the scale handle
+  115px on its own and 85px as soon as anything else shares the pivot.
+
+### Verified
+
+- With the Transform tool the move arrow tip now lands at 172px and the scale
+  handle at about 82px along Z, against 185px and 85px for the native gizmo,
+  and the plane handles and the duplicate centre ring are gone. The Move,
+  Rotate and Scale tools on their own are unchanged.
+
+### Known issues
+
+- Ticking the viewport's **Object Gizmos** boxes (Gizmos popover -> Move /
+  Rotate / Scale) shows Blender's own transform gizmo alongside this one. Those
+  boxes are served by `VIEW3D_GGT_xform_gizmo_context`, which is a different
+  gizmo group from the tool's `VIEW3D_GGT_xform_gizmo` and carries the
+  `PERSISTENT` option -- `gizmo_group_type_unlink_delayed` refuses to unlink it,
+  so the suppression this addon uses cannot reach it. The transform tools
+  themselves are unaffected, and those boxes are off by default.
+
 ## [1.2.4] - 2026-08-12
 
 ### Fixed
@@ -150,6 +185,7 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.2.5]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.5
 [1.2.4]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.4
 [1.2.3]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.3
 [1.2.2]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.2

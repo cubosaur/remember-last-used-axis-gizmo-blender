@@ -69,6 +69,17 @@ MOVE_ARROW_STYLE = 'NORMAL'
 #: AXIS_SCALE * ARROW_LENGTH is what sets where the arrow ends.
 ARROW_LENGTH = 0.76
 
+#: Blender's own gizmo rearranges itself when several handle sets share the
+#: pivot, and the move and scale handles sit on the same axis lines: left
+#: alone they would coincide exactly, which hides the scale handles and makes
+#: the two pick apart at random. These are measured off the native gizmo, by
+#: diffing screenshots of each Object Gizmo combination against a gizmo-free
+#: plate of the same view. Along Z, the least foreshortened axis: the move
+#: arrow tip goes 136px -> 185px once the dials are there, and the scale
+#: handle goes 115px -> 85px as soon as anything else shares the pivot.
+AXIS_SPREAD_WITH_ROTATE = 1.36
+RESIZE_PULL_IN = 0.74
+
 AXIS_NAMES = ('X', 'Y', 'Z')
 
 #: (u, v, normal) for the XY, YZ and ZX plane handles. Blender colours a plane
@@ -319,6 +330,39 @@ def _basis(x_axis, y_axis, z_axis, translation):
     ))
 
 
+def axis_length(kind, modes):
+    """Where an axis handle ends, in gizmo units.
+
+    Move and scale handles run along the same three lines, so they have to be
+    kept apart when both are on show. Blender does that by pushing the move
+    arrows out past the rotation dials and pulling the scale handles in, and
+    the head size is set by ``scale_basis`` rather than by ``length``, so
+    moving the end here does not change how big the head is drawn.
+    """
+    if kind == state.TRANSLATE:
+        if state.ROTATE in modes:
+            return ARROW_LENGTH * AXIS_SPREAD_WITH_ROTATE
+        return ARROW_LENGTH
+    if modes & {state.TRANSLATE, state.ROTATE}:
+        return ARROW_LENGTH * RESIZE_PULL_IN
+    return ARROW_LENGTH
+
+
+def crowded_out(kind, role, modes):
+    """Whether a handle is one Blender drops when the pivot gets busy.
+
+    The rotation dials sweep straight through where the plane handles sit, and
+    the scale centre lands exactly on the move centre. Blender hides both
+    rather than stacking them: a handle drawn underneath another cannot be
+    seen, and picking between the two comes down to draw order.
+    """
+    if role == 'plane':
+        return state.ROTATE in modes
+    if role == 'centre':
+        return kind == state.RESIZE and state.TRANSLATE in modes
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Gizmo group
 # ---------------------------------------------------------------------------
@@ -486,7 +530,7 @@ class MGB_GGT_transform(GizmoGroup):
 
         for key, gz in self.handles.items():
             kind, role, index = key
-            if freeze or kind not in modes:
+            if freeze or kind not in modes or crowded_out(kind, role, modes):
                 gz.hide = True
                 continue
             gz.hide = False
@@ -496,7 +540,7 @@ class MGB_GGT_transform(GizmoGroup):
                 gz.scale_basis = AXIS_SCALE
                 gz.line_width = AXIS_LINE_WIDTH * ui_scale
                 try:
-                    gz.length = ARROW_LENGTH
+                    gz.length = axis_length(kind, modes)
                     if kind == state.TRANSLATE:
                         gz.draw_style = MOVE_ARROW_STYLE
                 except Exception:
