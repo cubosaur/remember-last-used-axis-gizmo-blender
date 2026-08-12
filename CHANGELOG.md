@@ -3,6 +3,39 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-08-12
+
+### Changed
+
+- **The transform moves from a middle mouse drag to a right mouse drag, and
+  middle mouse goes back to Blender.** Middle mouse orbits again, exactly as it
+  does by default, and Shift+MMB, Ctrl+MMB and Shift+Ctrl+MMB were never
+  touched to begin with. Upgrading restores the middle mouse orbit
+  automatically, from the backup the older version recorded before disabling
+  it.
+- Retiming the viewport context menus from press to click is now the *only*
+  existing keymap entry the addon changes, and the right mouse *drag* it adds
+  is a separate binding from the right mouse *click* the menu uses, so both
+  fit on the same button.
+
+### Removed
+
+- The **Orbit With Right Mouse Drag** option. Orbit never leaves middle mouse
+  now, so there is nothing to move.
+- The **Also Pan/Zoom With Right Mouse** option, which only existed to make up
+  for orbit having moved. Shift+MMB and Ctrl+MMB are untouched.
+- The **Activation** option. On right mouse the transform has to start on a
+  drag: starting on press would take the context menu with it.
+- The **Orbit When Nothing To Transform** option. With nothing to transform the
+  drag is handed straight back to Blender rather than being redirected.
+
+### Verified
+
+- After upgrading from a config with the middle mouse orbit disabled, the orbit
+  entry is active again, the only binding the addon adds is
+  `mgb.transform_last_axis` on RIGHTMOUSE / CLICK_DRAG, nothing at all sits on
+  middle mouse, and the viewport context menus read CLICK.
+
 ## [1.4.0] - 2026-08-12
 
 ### Removed
@@ -324,6 +357,7 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.5.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.5.0
 [1.4.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.4.0
 [1.3.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.3.0
 [1.2.7]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.7

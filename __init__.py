@@ -8,9 +8,11 @@ Blender's 3D viewport:
   constraint) remembers that axis, and the sidebar names it.
 * Blender's viewport is left exactly as it is: no gizmo is replaced, suppressed
   or drawn over, and no colour is changed.
-* Middle-mouse-drag anywhere in the viewport re-runs that transform along that
-  axis, interactively -- the drag distance drives the amount.
-* Viewport orbit moves from middle-mouse to right-mouse-drag.
+* Right-mouse-drag anywhere in the viewport re-runs that transform along that
+  axis, interactively -- the drag distance drives the amount. A plain right
+  click still opens the context menu.
+* Blender's own mouse bindings are left alone: middle mouse still orbits, pans
+  and zooms exactly as it does by default.
 
 Every keymap change the addon makes is recorded and reverted automatically when
 the addon is disabled, and can be reverted at any time from the preferences.

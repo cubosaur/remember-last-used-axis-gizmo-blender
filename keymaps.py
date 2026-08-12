@@ -6,15 +6,19 @@ Two different kinds of change are made, and they are undone differently:
 1. **Additions** go into ``wm.keyconfigs.addon``. Blender discards those with
    the addon, and we remove them explicitly on unregister anyway.
 
-2. **Edits to existing entries** (disabling the middle mouse orbit, retiming the
-   context menus from press to click) have to happen in ``wm.keyconfigs.user``,
-   which persists in the user preferences. Every one of those is recorded in
+2. **Edits to existing entries** (retiming the viewport context menus from press
+   to click) have to happen in ``wm.keyconfigs.user``, which persists in the
+   user preferences. Every one of those is recorded in
    :attr:`prefs.MayaGizmoPreferences.keymap_backup` as JSON *before* it is
    changed, so it can be restored exactly -- including after a crash, since the
    record lives in the preferences rather than in memory.
 
-Nothing here touches Shift+MMB (pan), Ctrl+MMB (zoom) or Shift+Ctrl+MMB (dolly):
-those are separate keymap entries from the plain middle mouse orbit.
+The mouse is left as Blender has it. Middle mouse still orbits, along with
+Shift+MMB to pan and Ctrl+MMB to zoom, and the transform goes on a right mouse
+*drag* -- a separate keymap value from the right mouse *click* the context menu
+uses, which is why both fit on the same button. The menu has to move from press
+to click for that to work, since a menu opening on press never lets a drag
+begin; that retiming is the only existing entry this touches.
 """
 
 import json
@@ -42,11 +46,6 @@ _deferred_timers = set()
 _STAGE_DELAY = 0.05
 
 BACKUP_VERSION = 1
-
-#: Operators that plain middle mouse may be bound to. Which one it is depends on
-#: the "Middle Mouse Action" keymap preference (orbit by default, pan if the
-#: user flipped it).
-MMB_NAV_OPERATORS = {"view3d.rotate", "view3d.move"}
 
 #: Context menus are invoked through these; we only touch ones whose menu or
 #: panel name is a 3D viewport one.
@@ -200,21 +199,6 @@ def _store_backup(entries):
 # Discovery
 # ---------------------------------------------------------------------------
 
-def _iter_plain_mmb_nav(keyconfig):
-    """Plain (unmodified) middle mouse navigation entries in the 3D View."""
-    km = keyconfig.keymaps.get("3D View")
-    if km is None:
-        return
-    for kmi in km.keymap_items:
-        if (
-            kmi.type == 'MIDDLEMOUSE'
-            and kmi.value == 'PRESS'
-            and kmi.idname in MMB_NAV_OPERATORS
-            and _unmodified(kmi)
-        ):
-            yield km, kmi
-
-
 def _iter_viewport_context_menus(keyconfig):
     """Unmodified right-mouse-press entries that open a 3D viewport menu.
 
@@ -262,12 +246,12 @@ def compatibility_warning(context=None):
     if kc is None:
         return None
     p = get_prefs(ctx)
-    if p is None or not p.remap_orbit_to_rmb:
+    if p is None or not p.enable_rmb_transform:
         return None
     if _uses_right_mouse_select(kc):
         return [
             "Right mouse is bound to Select in your keymap.",
-            "Right-mouse-drag orbit is disabled to avoid breaking selection.",
+            "The right-mouse-drag transform is disabled to avoid breaking it.",
         ]
     return None
 
@@ -276,17 +260,18 @@ def compatibility_warning(context=None):
 # Apply / revert
 # ---------------------------------------------------------------------------
 
+def _enabled(p, kc_user):
+    """Whether the right-mouse-drag transform can be installed at all."""
+    return p.enable_rmb_transform and not _uses_right_mouse_select(kc_user)
+
+
 def _apply_user_keyconfig_edits(p, kc_user):
     entries = []
 
-    if p.enable_mmb_transform:
-        for km, kmi in _iter_plain_mmb_nav(kc_user):
-            entry = _signature(km, kmi)
-            entry.update(field="active", old=bool(kmi.active), new=False)
-            entries.append(entry)
-            kmi.active = False
-
-    if p.remap_orbit_to_rmb and p.retime_context_menu and not _uses_right_mouse_select(kc_user):
+    # A context menu on right mouse *press* opens before a drag can start, so
+    # it has to move to *click* for the drag to ever be seen. This is the only
+    # existing keymap entry the addon changes.
+    if _enabled(p, kc_user) and p.retime_context_menu:
         for km, kmi in _iter_viewport_context_menus(kc_user):
             entry = _signature(km, kmi)
             entry.update(field="value", old=kmi.value, new='CLICK')
@@ -297,27 +282,15 @@ def _apply_user_keyconfig_edits(p, kc_user):
 
 
 def _add_addon_items(p, kc_addon, kc_user):
+    if not _enabled(p, kc_user):
+        return
     km = kc_addon.keymaps.new(name="3D View", space_type='VIEW_3D')
-
-    if p.enable_mmb_transform:
-        kmi = km.keymap_items.new(
-            "mgb.transform_last_axis", 'MIDDLEMOUSE', p.mmb_activation
-        )
-        _addon_items.append((km, kmi))
-
-    if p.remap_orbit_to_rmb and not _uses_right_mouse_select(kc_user):
-        kmi = km.keymap_items.new("view3d.rotate", 'RIGHTMOUSE', 'CLICK_DRAG')
-        _addon_items.append((km, kmi))
-
-        if p.rmb_pan_zoom:
-            kmi = km.keymap_items.new(
-                "view3d.move", 'RIGHTMOUSE', 'CLICK_DRAG', shift=True
-            )
-            _addon_items.append((km, kmi))
-            kmi = km.keymap_items.new(
-                "view3d.zoom", 'RIGHTMOUSE', 'CLICK_DRAG', ctrl=True
-            )
-            _addon_items.append((km, kmi))
+    # CLICK_DRAG rather than PRESS: press belongs to the context menu, and only
+    # a drag can be told apart from the click that opens it.
+    kmi = km.keymap_items.new(
+        "mgb.transform_last_axis", 'RIGHTMOUSE', 'CLICK_DRAG'
+    )
+    _addon_items.append((km, kmi))
 
 
 def apply(context=None):

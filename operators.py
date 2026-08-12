@@ -35,21 +35,6 @@ def has_transform_target(context):
     return context.active_object is not None
 
 
-def _orbit_operator(context):
-    """The navigation operator plain middle mouse would normally run.
-
-    Respects the "Middle Mouse Action" keymap preference, which swaps orbit and
-    pan.
-    """
-    try:
-        kc_prefs = context.window_manager.keyconfigs.active.preferences
-        if getattr(kc_prefs, "use_v3d_mmb_pan", False):
-            return bpy.ops.view3d.move
-    except AttributeError:
-        pass
-    return bpy.ops.view3d.rotate
-
-
 class MGB_OT_transform_last_axis(Operator):
     """Transform along the last used gizmo axis, driven by the mouse drag"""
 
@@ -77,9 +62,8 @@ class MGB_OT_transform_last_axis(Operator):
             kind = last.kind if last.valid else None
 
         if kind is None or not has_transform_target(context):
-            if p.fallback_orbit:
-                _orbit_operator(context)('INVOKE_DEFAULT')
-                return {'FINISHED'}
+            # Nothing to transform, so hand the drag back to Blender rather
+            # than swallowing it.
             return {'PASS_THROUGH'}
 
         return self._run_transform(context, kind, last)
@@ -139,7 +123,7 @@ class MGB_OT_reset_keymap(Operator):
         restored = keymaps.revert(context, clear_backup=True)
         self.report(
             {'INFO'},
-            "Hotkeys reset -- middle mouse orbit and right click menus restored "
+            "Hotkeys reset -- right click menus restored "
             "(%d entr%s)" % (restored, "y" if restored == 1 else "ies"),
         )
         return {'FINISHED'}

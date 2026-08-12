@@ -4,8 +4,8 @@ Bring Autodesk Maya's *"transform along the last used axis"* workflow to
 Blender's 3D viewport.
 
 In Maya, once you have used a gizmo handle you can keep transforming along that
-axis by middle-mouse-dragging anywhere in the viewport, without having to hit
-the handle again. This addon brings that to Blender.
+axis by dragging anywhere in the viewport, without having to hit the handle
+again. This addon brings that to Blender, on a right mouse drag.
 
 Blender's viewport is left exactly as it is: nothing is drawn, replaced or
 recoloured. The addon watches which axis you used, names it in the sidebar, and
@@ -24,20 +24,21 @@ tracked, along with the transform orientation you used.
 
 **2. The sidebar names it.**
 
-**View ▸ sidebar ▸ Maya Gizmo** spells out what a middle mouse drag will do —
+**View ▸ sidebar ▸ Maya Gizmo** spells out what a right mouse drag will do —
 *Move X (Global)*, *Scale XY (Local)*, and so on — with a **Clear** button to
 forget it.
 
-**3. Middle-mouse-drag re-runs that transform, anywhere in the viewport.**
+**3. Right-mouse-drag re-runs that transform, anywhere in the viewport.**
 
-Press MMB, drag, release. It is a real interactive transform: the drag distance
+Press RMB, drag, release. It is a real interactive transform: the drag distance
 drives the amount, the header shows the live value, and it confirms when you
 release the button. You never have to hit a handle at all.
 
-**4. Viewport orbit moves to right-mouse-drag.**
+**4. Everything else is Blender's.**
 
-Since MMB is now the transform, orbit moves to right-mouse-drag. A normal right
-click still opens the context menu.
+Middle mouse still orbits, Shift+MMB still pans, Ctrl+MMB still zooms, and a
+plain right click still opens the context menu. The transform sits on a right
+mouse *drag*, which is a separate binding from the click.
 
 ---
 
@@ -64,21 +65,21 @@ Applied while the addon is enabled, in the 3D viewport only:
 
 | Input | Before | After |
 |---|---|---|
-| **MMB drag** | Orbit | **Transform along the last used axis** |
-| **RMB drag** | *(unassigned)* | **Orbit** |
+| **RMB drag** | *(unassigned)* | **Transform along the last used axis** |
 | **RMB click** | Context menu (on press) | Context menu (on release) |
+| MMB drag | Orbit | Orbit *(unchanged)* |
 | Shift+MMB | Pan | Pan *(unchanged)* |
 | Ctrl+MMB | Zoom | Zoom *(unchanged)* |
 | Shift+Ctrl+MMB | Dolly | Dolly *(unchanged)* |
 | Shift+RMB | Place 3D cursor | Place 3D cursor *(unchanged)* |
 
-Pan and zoom are separate keymap entries from the middle mouse orbit, so they
-are never touched. The only reason the context menu is retimed from press to
-release is that a menu opening on press would swallow the drag before it could
-orbit — a normal right click still opens it.
+Retiming the context menu is the *only* existing entry the addon changes. A
+menu that opens on press never lets a drag begin, so the menu moves to the
+release; a normal right click still opens it. Nothing about middle mouse is
+touched at all.
 
-If nothing is selected, or you have not used an axis yet, a middle mouse drag
-just orbits as it always did.
+If nothing is selected, or you have not used an axis yet, the drag is handed
+straight back to Blender.
 
 ## Resetting your hotkeys
 
@@ -103,22 +104,11 @@ them, so it asks for confirmation first.
 
 **Edit ▸ Preferences ▸ Add-ons ▸ Maya Gizmo**
 
-### Middle mouse transform
-
 | Setting | Default | |
 |---|---|---|
-| Middle Mouse Transform | on | Master switch. Off leaves the default MMB orbit alone. |
-| Activation | On Press | *On Press* starts immediately (matches Maya). Switch to *On Drag* if your input device misbehaves. |
+| Right Mouse Transform | on | Master switch. Off leaves the keymap completely alone. |
 | Transform Type | Last Used | *Last Used* repeats your last transform. *Active Tool* follows the Move/Rotate/Scale tool instead, falling back to the last used transform for other tools. |
-| Orbit When Nothing To Transform | on | Middle mouse drag orbits when there is no axis or no selection. |
-
-### Navigation
-
-| Setting | Default | |
-|---|---|---|
-| Orbit With Right Mouse Drag | on | Adds RMB-drag orbit. |
-| Context Menu On Click | on | Retimes the viewport context menus from press to click. |
-| Also Pan/Zoom With Right Mouse | **off** | Adds Shift+RMB pan and Ctrl+RMB zoom. Off by default because those collide with placing the 3D cursor and with lasso select. Pan and zoom already work on Shift+MMB and Ctrl+MMB. |
+| Context Menu On Click | on | Retimes the viewport context menus from press to click. The transform needs this to work at all, since a menu on press never lets the drag begin. |
 
 ---
 
@@ -144,16 +134,17 @@ Python cannot reach the handles themselves: a `Region` exposes no gizmo map,
 outside a Python gizmo group's own callbacks. Neither trade was worth it, so the
 marker is gone and the sidebar reports the axis instead.
 
-The middle mouse binding starts a genuine `transform.translate` / `rotate` /
+The right mouse binding starts a genuine `transform.translate` / `rotate` /
 `resize` with `release_confirm` set, which is why it feels identical to dragging
 the handle rather than like a scripted nudge.
 
 ### Known limitations
 
-- On the **right-click-select** keymap the RMB-drag orbit is skipped
-  automatically, since right mouse already selects there. Everything else works.
+- On the **right-click-select** keymap the RMB-drag transform is skipped
+  automatically, since right mouse already selects there. The addon then makes
+  no keymap changes at all, and says so in preferences.
 - In **sculpt and paint modes** right mouse is bound to brush stencil controls,
-  which take priority, so RMB-drag orbit does not apply there.
+  which take priority, so the RMB-drag transform does not apply there.
 
 ---
 

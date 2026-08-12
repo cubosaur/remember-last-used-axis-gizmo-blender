@@ -70,33 +70,21 @@ def repair_theme():
 class MayaGizmoPreferences(AddonPreferences):
     bl_idname = ADDON_ID
 
-    # -- Middle mouse transform ------------------------------------------------
+    # -- Right mouse transform -------------------------------------------------
 
-    enable_mmb_transform: BoolProperty(
-        name="Middle Mouse Transform",
+    enable_rmb_transform: BoolProperty(
+        name="Right Mouse Transform",
         description=(
-            "Middle-mouse-drag in the 3D viewport runs the last used transform "
-            "along the last used axis. Disables the default middle mouse orbit"
+            "Right-mouse-drag in the 3D viewport runs the last used transform "
+            "along the last used axis. Middle mouse is left alone, so it still "
+            "orbits, and a plain right click still opens the context menu"
         ),
         default=True,
         update=_keymap_update,
     )
-    mmb_activation: EnumProperty(
-        name="Activation",
-        description="When the middle mouse button starts the transform",
-        items=(
-            ('PRESS', "On Press",
-             "Start as soon as the button goes down. Most responsive, matches Maya"),
-            ('CLICK_DRAG', "On Drag",
-             "Start after the mouse has moved a short distance. Use this if "
-             "On Press misbehaves with your input device"),
-        ),
-        default='PRESS',
-        update=_keymap_update,
-    )
     transform_source: EnumProperty(
         name="Transform Type",
-        description="Which transform the middle mouse drag performs",
+        description="Which transform the right mouse drag performs",
         items=(
             ('LAST_USED', "Last Used",
              "Repeat the last transform you performed, whether you used a gizmo "
@@ -107,44 +95,15 @@ class MayaGizmoPreferences(AddonPreferences):
         ),
         default='LAST_USED',
     )
-    fallback_orbit: BoolProperty(
-        name="Orbit When Nothing To Transform",
-        description=(
-            "If no axis has been used yet, or nothing is selected, "
-            "middle-mouse-drag orbits the view as it normally would"
-        ),
-        default=True,
-    )
-
-    # -- Navigation ------------------------------------------------------------
-
-    remap_orbit_to_rmb: BoolProperty(
-        name="Orbit With Right Mouse Drag",
-        description=(
-            "Add right-mouse-drag as the viewport orbit. "
-            "Shift+MMB pan and Ctrl+MMB zoom are left untouched"
-        ),
-        default=True,
-        update=_keymap_update,
-    )
     retime_context_menu: BoolProperty(
         name="Context Menu On Click",
         description=(
             "Change the 3D viewport context menus from mouse-press to "
-            "mouse-click so that a right-mouse-drag can orbit instead of "
-            "immediately opening the menu. A normal right click still opens it"
+            "mouse-click, so that a right-mouse-drag can start the transform "
+            "instead of immediately opening the menu. A normal right click "
+            "still opens it. The transform needs this to work at all"
         ),
         default=True,
-        update=_keymap_update,
-    )
-    rmb_pan_zoom: BoolProperty(
-        name="Also Pan/Zoom With Right Mouse",
-        description=(
-            "WARNING: Shift+RMB places the 3D cursor and Ctrl+RMB is lasso "
-            "select in the default keymap. Enabling this overrides both. "
-            "Pan and zoom already work on Shift+MMB and Ctrl+MMB"
-        ),
-        default=False,
         update=_keymap_update,
     )
 
@@ -175,19 +134,16 @@ class MayaGizmoPreferences(AddonPreferences):
             sub.label(text="Not applied", icon='X')
 
         col = header.column()
-        col.prop(self, "enable_mmb_transform")
+        col.prop(self, "enable_rmb_transform")
         sub = col.column()
-        sub.enabled = self.enable_mmb_transform
-        sub.prop(self, "mmb_activation")
+        sub.enabled = self.enable_rmb_transform
         sub.prop(self, "transform_source")
-        sub.prop(self, "fallback_orbit")
-
-        col.separator()
-        col.prop(self, "remap_orbit_to_rmb")
-        sub = col.column()
-        sub.enabled = self.remap_orbit_to_rmb
         sub.prop(self, "retime_context_menu")
-        sub.prop(self, "rmb_pan_zoom", icon='ERROR' if self.rmb_pan_zoom else 'NONE')
+        col.label(
+            text="Middle mouse is untouched: it still orbits, with Shift to "
+                 "pan and Ctrl to zoom.",
+            icon='INFO',
+        )
 
         warning = keymaps.compatibility_warning(context)
         if warning:
