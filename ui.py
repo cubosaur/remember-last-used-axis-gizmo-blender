@@ -34,7 +34,6 @@ class MGB_PT_sidebar(Panel):
         col = layout.column(align=True)
         col.prop(p, "enable_mmb_transform", text="MMB Transform")
         col.prop(p, "remap_orbit_to_rmb", text="RMB Orbit")
-        col.prop(p, "show_highlight", text="Highlight Axis")
 
         layout.operator("mgb.reset_keymap", icon='LOOP_BACK')
 

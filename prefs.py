@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Addon preferences."""
 
+import json
+
 import bpy
 from bpy.props import (
     BoolProperty,
     EnumProperty,
-    FloatVectorProperty,
     StringProperty,
 )
 from bpy.types import AddonPreferences
@@ -32,10 +33,38 @@ def _keymap_update(self, context):
     keymaps.reapply()
 
 
-def _highlight_update(self, context):
-    """Tint the last used axis in the theme, or put the theme back."""
-    from . import highlight
-    highlight.refresh(context)
+#: Theme entries 1.3.0 recoloured to highlight the last used axis.
+_AXIS_FIELDS = ("axis_x", "axis_y", "axis_z")
+
+
+def repair_theme():
+    """Put back an axis colour left tinted by 1.3.0.
+
+    That version highlighted the last used axis by recolouring it in the theme,
+    recording the colour it replaced in :attr:`MayaGizmoPreferences.theme_backup`
+    first. The highlight is gone, so anything still recorded is a tint nothing
+    else is going to undo -- an upgrade that skipped the old version's clean
+    shutdown, or a crash while a highlight was applied.
+    """
+    prefs = get_prefs()
+    if prefs is None or not prefs.theme_backup:
+        return None
+
+    try:
+        colours = json.loads(prefs.theme_backup)
+    except ValueError:
+        colours = None
+
+    if isinstance(colours, list) and len(colours) == len(_AXIS_FIELDS):
+        try:
+            ui = bpy.context.preferences.themes[0].user_interface
+            for field, colour in zip(_AXIS_FIELDS, colours):
+                setattr(ui, field, colour)
+        except (AttributeError, IndexError, TypeError, ValueError):
+            pass
+
+    prefs.theme_backup = ""
+    return None
 
 
 class MayaGizmoPreferences(AddonPreferences):
@@ -119,29 +148,6 @@ class MayaGizmoPreferences(AddonPreferences):
         update=_keymap_update,
     )
 
-    # -- Highlight -------------------------------------------------------------
-
-    show_highlight: BoolProperty(
-        name="Highlight Last Used Axis",
-        description=(
-            "Colour the last used axis of Blender's transform gizmo. The axis "
-            "colour comes from the theme, which also colours that axis' floor "
-            "line and its ball on the navigation gizmo, so those follow along"
-        ),
-        default=True,
-        update=_highlight_update,
-    )
-    highlight_color: FloatVectorProperty(
-        name="Color",
-        description="Colour of the last used axis",
-        subtype='COLOR',
-        size=3,
-        min=0.0,
-        max=1.0,
-        default=(1.0, 0.85, 0.1),
-        update=_highlight_update,
-    )
-
     # -- Internal --------------------------------------------------------------
 
     #: JSON record of every keymap change made, so they can be reverted exactly.
@@ -149,9 +155,8 @@ class MayaGizmoPreferences(AddonPreferences):
     #: after a crash or an unclean shutdown.
     keymap_backup: StringProperty(default="", options={'HIDDEN'})
 
-    #: The theme's own axis colours, recorded while a highlight replaces one of
-    #: them. Stored for the same reason: a crash mid-highlight would otherwise
-    #: leave a yellow axis behind with nothing left to say what it had been.
+    #: Axis colours recorded by 1.3.0 while it tinted one of them. Kept only so
+    #: :func:`repair_theme` can put a leftover tint back; nothing writes it now.
     theme_backup: StringProperty(default="", options={'HIDDEN'})
 
     def draw(self, context):
@@ -192,19 +197,6 @@ class MayaGizmoPreferences(AddonPreferences):
                 box.label(text=line, icon='ERROR')
 
         box = layout.box()
-        box.label(text="Last Used Axis", icon='EMPTY_ARROWS')
-        col = box.column()
-        col.prop(self, "show_highlight")
-        sub = col.column()
-        sub.enabled = self.show_highlight
-        sub.prop(self, "highlight_color", text="Color")
-        sub.label(
-            text="The axis colour is shared with that axis' floor line and "
-                 "the navigation gizmo, so those turn yellow too.",
-            icon='INFO',
-        )
-
-        box = layout.box()
         box.label(text="Reset", icon='LOOP_BACK')
         col = box.column()
         col.label(
@@ -220,7 +212,14 @@ class MayaGizmoPreferences(AddonPreferences):
 
 def register():
     bpy.utils.register_class(MayaGizmoPreferences)
+    if bpy.app.background:
+        return
+    # Deferred by a tick: the addon preferences are not reachable until Blender
+    # has finished enabling the addon, and this needs to read one.
+    bpy.app.timers.register(repair_theme, first_interval=0.0)
 
 
 def unregister():
+    if bpy.app.timers.is_registered(repair_theme):
+        bpy.app.timers.unregister(repair_theme)
     bpy.utils.unregister_class(MayaGizmoPreferences)

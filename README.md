@@ -3,18 +3,13 @@
 Bring Autodesk Maya's *"transform along the last used axis"* workflow to
 Blender's 3D viewport.
 
-In Maya, once you have used a gizmo handle, that handle stays highlighted and
-you can keep transforming along it by middle-mouse-dragging anywhere in the
-viewport, without having to hit the handle again. This addon does the same in
-Blender.
+In Maya, once you have used a gizmo handle you can keep transforming along that
+axis by middle-mouse-dragging anywhere in the viewport, without having to hit
+the handle again. This addon brings that to Blender.
 
-| Move along X | Move on the XY plane | Rotate around Z |
-|---|---|---|
-| ![Move X](docs/images/axis-x.png) | ![Move XY](docs/images/plane-xy.png) | ![Rotate Z](docs/images/rotate-z.png) |
-
-The handle you last used is drawn in yellow, right on the gizmo. It is a normal
-handle otherwise -- drag it and it moves, rotates or scales exactly as it always
-did.
+Blender's viewport is left exactly as it is: nothing is drawn, replaced or
+recoloured. The addon watches which axis you used, names it in the sidebar, and
+gives you a way to reuse it.
 
 ---
 
@@ -27,12 +22,11 @@ the keyboard — either way the addon remembers *Move, X, Global*. Rotation dial
 scale handles, plane handles and the screen-space / uniform handles are all
 tracked, along with the transform orientation you used.
 
-**2. That handle turns yellow.**
+**2. The sidebar names it.**
 
-Not a marker on top of the gizmo -- the handle itself. The X arrow, the XY plane
-square, the Z rotation dial, the uniform scale ring: whichever one you last used
-is drawn yellow instead of its usual axis colour, so you can always see what a
-middle mouse drag is about to do.
+**View ▸ sidebar ▸ Maya Gizmo** spells out what a middle mouse drag will do —
+*Move X (Global)*, *Scale XY (Local)*, and so on — with a **Clear** button to
+forget it.
 
 **3. Middle-mouse-drag re-runs that transform, anywhere in the viewport.**
 
@@ -126,10 +120,6 @@ them, so it asks for confirmation first.
 | Context Menu On Click | on | Retimes the viewport context menus from press to click. |
 | Also Pan/Zoom With Right Mouse | **off** | Adds Shift+RMB pan and Ctrl+RMB zoom. Off by default because those collide with placing the 3D cursor and with lasso select. Pan and zoom already work on Shift+MMB and Ctrl+MMB. |
 
-### Last used axis
-
-**Highlight Last Used Axis** (on), plus the colour it uses.
-
 ---
 
 ## How it works
@@ -140,25 +130,19 @@ every finished transform lands in `wm.operators` carrying its `constraint_axis`
 and `orient_type` — the same data the F9 redo panel shows. One code path
 therefore covers gizmo drags and keyboard shortcuts equally.
 
-The gizmo itself is left completely alone — nothing is suppressed and nothing is
-drawn over it. Python cannot reach the handles Blender's gizmo is made of: a
-`Region` exposes no gizmo map, `WindowManager` offers only
-`gizmo_group_type_ensure` and `gizmo_group_type_unlink_delayed`, and
-`context.gizmo_group` is `None` anywhere outside a Python gizmo group's own
-callbacks. There is no `Gizmo` object to recolour.
+The viewport is never touched. Nothing is drawn, no gizmo is suppressed or
+replaced, and no colour is changed, so Blender's transform gizmo behaves and
+looks exactly as it always does, at any interface scale and any Gizmo Size.
 
-What Python *can* write is the theme, and that is where the gizmo takes its axis
-colours from: `theme.user_interface.axis_x/y/z`. The addon swaps the entry for
-the last used axis to the highlight colour and puts it back when the axis
-changes. Because it is Blender's own gizmo drawing itself, the highlight follows
-the interface scale, the Gizmo Size preference and every gizmo behaviour exactly,
-with nothing to keep in sync.
-
-Those three theme entries also colour the viewport's floor axis lines and the
-navigation gizmo, so highlighting X turns the X floor line and the navigation
-gizmo's X ball yellow too. There is no separate theme entry for the gizmo, so
-that is the cost of not touching it. The colours being replaced are recorded in
-the addon preferences first, so a crash mid-highlight cannot strand the theme.
+Earlier versions did mark the last used handle in yellow. Doing that means
+either rebuilding the gizmo out of Blender's gizmo primitives — which never
+quite matches the real one — or recolouring `theme.user_interface.axis_x/y/z`,
+which also colours that axis' floor line and its ball on the navigation gizmo.
+Python cannot reach the handles themselves: a `Region` exposes no gizmo map,
+`WindowManager` offers only `gizmo_group_type_ensure` and
+`gizmo_group_type_unlink_delayed`, and `context.gizmo_group` is `None` anywhere
+outside a Python gizmo group's own callbacks. Neither trade was worth it, so the
+marker is gone and the sidebar reports the axis instead.
 
 The middle mouse binding starts a genuine `transform.translate` / `rotate` /
 `resize` with `release_confirm` set, which is why it feels identical to dragging
@@ -166,18 +150,6 @@ the handle rather than like a scripted nudge.
 
 ### Known limitations
 
-- The highlight colour is **shared**. `theme.user_interface.axis_x/y/z` colours
-  the gizmo axis, that axis' floor line and its ball on the navigation gizmo, so
-  all three turn yellow together. Blender has no separate theme entry for the
-  gizmo. Turn the highlight off in preferences if you would rather not have it.
-- A **plane** handle constrains two axes, so both of those axes light up rather
-  than the plane handle itself — Blender colours a plane handle by the axis it is
-  perpendicular to, which is the one axis the transform did not use.
-- **Screen-space** moves, **uniform** scales and **view-axis** rotations
-  constrain no axis, so there is nothing to highlight. The sidebar still names
-  them.
-- The highlight is a preference change, so it applies to **every** 3D viewport
-  and persists for the session, not just the viewport you transformed in.
 - On the **right-click-select** keymap the RMB-drag orbit is skipped
   automatically, since right mouse already selects there. Everything else works.
 - In **sculpt and paint modes** right mouse is bound to brush stencil controls,

@@ -3,6 +3,41 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-12
+
+### Removed
+
+- **The yellow highlight, and the Highlight Last Used Axis option with it.**
+  Marking the handle meant one of two trades, and neither held up: rebuilding
+  the gizmo out of Blender's gizmo primitives, which never quite matched the
+  real one and is where every visual difference from 1.2.0 onwards came from,
+  or recolouring the axis in the theme, which drags that axis' floor line and
+  the navigation gizmo along with it. Blender's viewport is now left completely
+  alone -- nothing drawn, nothing suppressed, no colour changed -- so the
+  transform gizmo looks and behaves exactly as Blender draws it, at any
+  interface scale and any Gizmo Size.
+- The **Color** preference, which no longer applies.
+
+### Changed
+
+- The last used axis is reported in the sidebar, which is now the only place it
+  is shown. Everything else is unchanged: the axis tracking, the middle mouse
+  transform, the right mouse orbit and the keymap handling all work as they did.
+
+### Fixed
+
+- A leftover axis tint from 1.3.0 is put back on the next start. That version
+  recorded the colours it replaced, and upgrading straight over a running
+  Blender, or a crash while a highlight was applied, would otherwise have left a
+  yellow axis behind with nothing to undo it.
+
+### Verified
+
+- Tracking an axis leaves all three theme axis colours untouched, and the
+  preferences no longer carry `show_highlight` or `highlight_color`.
+- A config saved mid-tint, reopened on this version, comes back to the theme's
+  own colours and clears the record.
+
 ## [1.3.0] - 2026-08-12
 
 ### Changed
@@ -289,6 +324,7 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.4.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.4.0
 [1.3.0]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.3.0
 [1.2.7]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.7
 [1.2.6]: https://github.com/cubosaur/maya-gizmo-for-blender/releases/tag/v1.2.6
