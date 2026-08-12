@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "remember_last_used_axis"
-version = "1.6.1"
+version = "1.7.0"
 name = "Remember Last Used Axis"
 tagline = "Transform along the last used gizmo axis with an RMB drag"
 maintainer = "Angelo Tsiflas (cubosaur)"

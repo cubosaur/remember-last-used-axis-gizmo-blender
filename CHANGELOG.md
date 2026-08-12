@@ -3,6 +3,45 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-08-12
+
+### Changed
+
+- **The axis registers as you grab the handle, not when you let go.** The
+  sidebar used to wait for the transform to finish, because the only thing
+  being read was `wm.operators`, which an operator reaches on completion. A
+  running transform is now read from `window.modal_operators`, whose properties
+  carry what the operator was invoked with -- for a gizmo handle, the
+  constraint that handle stands for.
+
+### Fixed
+
+- **A cancelled transform now counts.** Dragging a gizmo handle and cancelling
+  with right click or `Esc` left the axis unrecorded, because a cancel never
+  reaches `wm.operators` at all: by the time it was over there was nothing left
+  to read. Reading it while it runs catches it.
+- With that, the finished list still held the transform from *before* the
+  cancelled one, and re-reading it would have undone what was caught live. The
+  addon now remembers what it has already taken from that list and will not
+  apply the same entry twice.
+
+### Known issues
+
+- An axis typed mid-drag only lands when the transform finishes, since a
+  running operator's properties keep their invoke-time values. `G` then `X`
+  reads as an unconstrained move until confirmed, and cancelling it records the
+  unconstrained move. Gizmo handles carry their constraint from the start, so
+  cancelling one of those is exact.
+
+### Verified
+
+- With a transform still running and `wm.operators` still empty, the tracked
+  axis already reads *Move Y (Global)* -- the drag registering before it
+  finishes, which is the same path a cancel relies on.
+- A finished Move X, then a Move Y caught live and cancelled: the stale Move X
+  is ignored and the Move Y survives, while a genuinely new finished transform
+  still lands.
+
 ## [1.6.1] - 2026-08-12
 
 ### Fixed
@@ -474,6 +513,7 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.7.0]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.7.0
 [1.6.1]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.6.1
 [1.6.0]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.6.0
 [1.5.3]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.5.3

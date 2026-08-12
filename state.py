@@ -93,8 +93,63 @@ class LastAxis:
 LAST = LastAxis()
 
 
+#: The values last taken from a *finished* transform. A transform that is
+#: cancelled never registers, so after one the finished-operator list still
+#: holds the transform before it -- and reading that again would undo what was
+#: picked up live. Remembering what was already taken from it keeps the older
+#: transform from overwriting a newer, cancelled one.
+_consumed = None
+
+
+def _read(props):
+    """(constraint, orient_type, orient_axis) off a transform's properties."""
+    try:
+        axis = tuple(bool(v) for v in getattr(props, "constraint_axis", ()))
+    except Exception:
+        axis = ()
+    return (
+        axis if len(axis) == 3 else (False, False, False),
+        _safe_enum(props, "orient_type", 'GLOBAL'),
+        _safe_enum(props, "orient_axis", LAST.orient_axis),
+    )
+
+
+def capture_running(context=None):
+    """Read the transform being dragged right now.
+
+    Returns ``None`` when no transform is running, otherwise whether the
+    tracked axis changed. This is what makes the axis show up the moment a
+    gizmo handle is grabbed rather than when the drag finishes, and it is the
+    only way a *cancelled* transform registers at all: cancelling never adds
+    anything to ``wm.operators``, so by the time it is over there is nothing
+    left to read.
+
+    The properties carry whatever the operator was invoked with, which for a
+    gizmo handle is the constraint that handle stands for.
+    """
+    window = getattr(context or bpy.context, "window", None)
+    if window is None:
+        return None
+    try:
+        running = window.modal_operators
+    except AttributeError:
+        return None
+
+    # Newest first, so the first transform found is the one being dragged.
+    for op in running:
+        try:
+            kind = OP_KINDS.get(op.bl_idname)
+            if kind is None:
+                continue
+            return remember(kind, *_read(op.properties))
+        except Exception:
+            # A modal operator part way through being torn down.
+            return None
+    return None
+
+
 def capture():
-    """Refresh :data:`LAST` from the most recently registered operator.
+    """Refresh :data:`LAST` from the most recently *finished* transform.
 
     Returns ``True`` only when the tracked axis actually *changed*, which is
     what tells the sidebar it needs redrawing. Returning "the last operator was
@@ -104,6 +159,8 @@ def capture():
     Cheap enough to call on every viewport redraw: it reads at most four RNA
     properties off an operator that already exists.
     """
+    global _consumed
+
     try:
         operators = bpy.context.window_manager.operators
         count = len(operators)
@@ -113,22 +170,26 @@ def capture():
         kind = OP_KINDS.get(op.bl_idname)
         if kind is None:
             return False
-        props = op.properties
+        values = (kind,) + _read(op.properties)
     except Exception:
         # A half torn down operator, or no window manager (background mode).
         return False
 
-    try:
-        axis = tuple(bool(v) for v in getattr(props, "constraint_axis", ()))
-    except Exception:
-        axis = ()
+    return apply_finished(values)
 
-    return remember(
-        kind,
-        axis if len(axis) == 3 else (False, False, False),
-        _safe_enum(props, "orient_type", 'GLOBAL'),
-        _safe_enum(props, "orient_axis", LAST.orient_axis),
-    )
+
+def apply_finished(values):
+    """Apply a finished transform unless it has already been taken.
+
+    Split out so the guard can be exercised directly: operators invoked from
+    Python never reach ``wm.operators``, so the read above cannot be driven by
+    a script.
+    """
+    global _consumed
+    if values == _consumed:
+        return False
+    _consumed = values
+    return remember(*values)
 
 
 def remember(kind, constraint, orient_type, orient_axis):
@@ -186,13 +247,21 @@ def _tag_sidebar():
 
 
 def _on_redraw():
-    if capture():
+    # A transform being dragged wins outright. Falling through to the finished
+    # list while one is running would read the transform *before* it.
+    changed = capture_running()
+    if changed is None:
+        changed = capture()
+    if changed:
         _tag_sidebar()
 
 
 def register():
-    global _handle
+    global _handle, _consumed
     LAST.reset()
+    # Nothing has been taken from the finished list yet, so a transform already
+    # sitting in it is picked up on the first redraw.
+    _consumed = None
     if bpy.app.background or _handle is not None:
         return
     _handle = bpy.types.SpaceView3D.draw_handler_add(
@@ -201,8 +270,9 @@ def register():
 
 
 def unregister():
-    global _handle
+    global _handle, _consumed
     if _handle is not None:
         bpy.types.SpaceView3D.draw_handler_remove(_handle, 'WINDOW')
         _handle = None
+    _consumed = None
     LAST.reset()

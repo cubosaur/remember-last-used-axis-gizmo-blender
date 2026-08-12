@@ -22,6 +22,10 @@ the keyboard — either way the addon remembers *Move, X, Global*. Rotation dial
 scale handles, plane handles and the screen-space / uniform handles are all
 tracked, along with the transform orientation you used.
 
+It registers the moment you grab the handle, not when you let go, so a
+transform you **cancel** with right click or `Esc` still counts — you picked
+that axis, and the addon takes you at your word.
+
 **2. The sidebar names it.**
 
 **View ▸ sidebar ▸ Remember Last Used Axis** spells out what a right mouse drag will do —
@@ -124,10 +128,21 @@ them, so it asks for confirmation first.
 ## How it works
 
 Blender's transform gizmo is C code with no Python-visible "this handle was
-dragged" callback, so the addon does not hook the gizmo. It reads the *result*:
-every finished transform lands in `wm.operators` carrying its `constraint_axis`
-and `orient_type` — the same data the F9 redo panel shows. One code path
-therefore covers gizmo drags and keyboard shortcuts equally.
+dragged" callback, so the addon does not hook the gizmo. It watches two places
+instead, both on the viewport redraw it already runs on.
+
+While a transform is *running* it reads `window.modal_operators`, whose
+properties carry whatever the operator was invoked with — for a gizmo handle,
+the constraint that handle stands for. That is what makes the axis appear as
+you grab it, and it is the only way a cancelled transform registers at all: a
+cancel never reaches `wm.operators`, so once it is over there is nothing left
+to read.
+
+Once a transform *finishes* it lands in `wm.operators` carrying its
+`constraint_axis` and `orient_type` — the same data the F9 redo panel shows.
+That is the authoritative reading, since it reflects any axis you typed
+mid-drag. The addon remembers what it has already taken from that list, so the
+transform before a cancelled one cannot overwrite it.
 
 The viewport is never touched. Nothing is drawn, no gizmo is suppressed or
 replaced, and no colour is changed, so Blender's transform gizmo behaves and
@@ -149,6 +164,12 @@ the handle rather than like a scripted nudge.
 
 ### Known limitations
 
+- An axis typed **mid-drag** only lands when the transform finishes. A running
+  operator's properties keep the values it was invoked with, so `G` then `X`
+  reads as an unconstrained move until you confirm it — and if you cancel that,
+  the unconstrained move is what gets remembered. A gizmo handle carries its
+  constraint from the moment you grab it, so cancelling one of those records
+  the axis exactly.
 - On the **right-click-select** keymap the RMB-drag transform is skipped
   automatically, since right mouse already selects there. The addon then makes
   no keymap changes at all, and says so in preferences.
