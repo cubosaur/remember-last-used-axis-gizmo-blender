@@ -152,8 +152,10 @@ the handle rather than like a scripted nudge.
 - On the **right-click-select** keymap the RMB-drag transform is skipped
   automatically, since right mouse already selects there. The addon then makes
   no keymap changes at all, and says so in preferences.
-- In **sculpt and paint modes** right mouse is bound to brush stencil controls,
-  which take priority, so the RMB-drag transform does not apply there.
+- In **Sculpt**, **Texture Paint** and **Vertex Paint** right mouse is bound to
+  `brush.stencil_control`, and those mode keymaps take priority, so the RMB-drag
+  transform does not reach them. **Weight Paint** binds nothing there, so it
+  works as it does in Object Mode.
 
 ---
 
