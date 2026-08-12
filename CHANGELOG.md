@@ -3,6 +3,30 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-08-12
+
+### Fixed
+
+- **Disabling the addon could leave the viewport context menus on click.** The
+  retiming lives in your preferences and survives a restart, while the record
+  that undoes it lives in the addon's, and the two can come apart: the
+  extension id change in 1.6.0 put the record beyond the reach of the new id,
+  and so does deleting the addon without disabling it first. The record is
+  keyed on finding an entry still set to press, so once the menus were on click
+  with nothing recorded, nothing would ever have put them back. The revert now
+  also hands back any viewport context menu left on click, which fixes a
+  stranded config and lets the next enable record itself properly. It is
+  skipped when **Context Menu On Click** is off, so a click menu you set
+  yourself is left alone.
+
+### Verified
+
+- Five enable/disable cycles, run both on a config stranded by exactly this bug
+  and on a clean one: every disable hands the menus back to press, every enable
+  installs exactly one binding, and the draw handler, the deferred timer and
+  the middle mouse orbit come out right each time. Nothing accumulates across
+  cycles, which is what makes the addon safe to ship alongside others.
+
 ## [1.6.0] - 2026-08-12
 
 ### Changed
@@ -450,6 +474,7 @@ Initial release.
 - The right-mouse-drag orbit is skipped automatically on the right-click-select
   keymap, where right mouse already selects.
 
+[1.6.1]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.6.1
 [1.6.0]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.6.0
 [1.5.3]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.5.3
 [1.5.2]: https://github.com/cubosaur/remember-last-used-axis-gizmo-blender/releases/tag/v1.5.2

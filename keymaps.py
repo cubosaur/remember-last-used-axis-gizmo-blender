@@ -304,6 +304,37 @@ def repair_legacy_mmb(context=None, force=False):
     return repaired
 
 
+def _restore_menu_timing(kc_user):
+    """Put any viewport context menu still on click back on press.
+
+    The retiming lives in the user preferences and survives a restart, while
+    the record that undoes it lives in the addon preferences -- and the two can
+    come apart. Changing the extension id puts the record out of reach of the
+    new id, and so does deleting the addon without disabling it first. The
+    record is keyed on finding an entry still set to ``PRESS``, so once the
+    menus are on ``CLICK`` with nothing recorded, nothing would ever put them
+    back.
+
+    ``PRESS`` is Blender's own value here and this addon is the only thing that
+    sets ``CLICK``, so one left with nothing on record is one of ours to give
+    back. Sweeping in :func:`revert` means a disable always hands the menus
+    over, and an apply that starts from a stranded config finds them at
+    ``PRESS`` again and records itself properly.
+    """
+    restored = 0
+    for km in kc_user.keymaps:
+        for kmi in km.keymap_items:
+            if kmi.type != 'RIGHTMOUSE' or kmi.value != 'CLICK':
+                continue
+            if not _unmodified(kmi):
+                continue
+            menu = _menu_name(kmi)
+            if menu and menu.startswith(MENU_NAME_PREFIX):
+                kmi.value = 'PRESS'
+                restored += 1
+    return restored
+
+
 def _enabled(p, kc_user):
     """Whether the right-mouse-drag transform can be installed at all."""
     return p.enable_rmb_transform and not _uses_right_mouse_select(kc_user)
@@ -430,6 +461,13 @@ def revert(context=None, clear_backup=True):
                 restored += 1
             except Exception:
                 unresolved.append(entry)
+
+    # Anything the record did not cover, in case it and the keymap came apart.
+    # Skipped when the retiming is switched off, so that a user who prefers
+    # click menus and has told the addon to leave them alone keeps them.
+    p = get_prefs(ctx)
+    if kc_user is not None and (p is None or p.retime_context_menu):
+        restored += _restore_menu_timing(kc_user)
 
     if clear_backup:
         # Only forget what was actually put back. Clearing the record after a

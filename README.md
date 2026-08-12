@@ -93,6 +93,15 @@ Every change is written to a backup record in the addon preferences *before* it
 is made, so a reset restores exactly what you had — including your own prior
 customisations, and including after an unclean shutdown.
 
+The record and the keymap can still come apart, because the keymap edit lives
+in your preferences while the record lives in the addon's: changing the
+extension id puts the record beyond the reach of the new id, and so does
+deleting the addon without disabling it first. So the revert does not rely on
+the record alone. It also hands back anything it recognises as its own — a
+viewport context menu left on click, or a plain middle mouse navigation entry
+left switched off — since Blender's own values there are press and enabled, and
+this addon is the only thing in your config that changes them.
+
 If the keymap ever ends up in a state a reset cannot fix, there is a
 **Restore Blender Default Keymaps** button as a last resort. It resets the
 affected keymaps to factory defaults, which also discards your own edits in
