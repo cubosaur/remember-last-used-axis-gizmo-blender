@@ -19,8 +19,9 @@ gives you a way to reuse it.
 
 Drag the X arrow of the move gizmo, or the XY plane handle, or press `G` `X` on
 the keyboard — either way the addon remembers *Move, X, Global*. Rotation dials,
-scale handles, plane handles and the screen-space / uniform handles are all
-tracked, along with the transform orientation you used.
+the trackball at the centre of the rotate gizmo, scale handles, plane handles
+and the screen-space / uniform handles are all tracked, along with the
+transform orientation you used.
 
 It registers the moment you grab the handle, not when you let go, so a
 transform you **cancel** with right click or `Esc` still counts — you picked
@@ -29,8 +30,8 @@ that axis, and the addon takes you at your word.
 **2. The sidebar names it.**
 
 **View ▸ sidebar ▸ Remember Last Used Axis** spells out what a right mouse drag will do —
-*Move X (Global)*, *Scale XY (Local)*, and so on — with a **Clear** button to
-forget it.
+*Move X (Global)*, *Scale XY (Local)*, *Trackball*, and so on — with a **Clear**
+button to forget it, the **RMB Transform** switch, and **Reset Hotkeys**.
 
 **3. Right-mouse-drag re-runs that transform, anywhere in the viewport.**
 
@@ -82,8 +83,9 @@ menu that opens on press never lets a drag begin, so the menu moves to the
 release; a normal right click still opens it. Nothing about middle mouse is
 touched at all.
 
-If nothing is selected, or you have not used an axis yet, the drag is handed
-straight back to Blender.
+If you have not used an axis yet, or there is nothing for a transform to act
+on — no selection in Object Mode, no active object in any other mode — the
+drag is handed straight back to Blender.
 
 ## Resetting your hotkeys
 

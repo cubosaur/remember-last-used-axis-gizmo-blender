@@ -24,8 +24,8 @@ copyright = [
 # None. This addon does not read or write files, and does not use the network.
 
 [build]
-# LICENSE is kept in the archive on purpose; README.md is not, because its
-# images live under docs/ and would be broken links once packaged.
+# LICENSE is kept in the archive on purpose; README.md and CHANGELOG.md are
+# not, since they document the repository rather than the installed add-on.
 paths_exclude_pattern = [
   "__pycache__/",
   "/.git/",
